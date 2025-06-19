@@ -21,6 +21,7 @@ import os
 
 import cartopy.crs as ccrs
 import geopandas as gpd
+import seaborn as sns
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 import numpy as np
@@ -98,7 +99,7 @@ def set_plot_style():
     plt.style.use(
         [
             "classic",
-            "seaborn-white",
+            "seaborn-v0_8-white",
             {
                 "axes.grid": False,
                 "grid.linestyle": "--",
@@ -161,7 +162,7 @@ def plot_map(n, ax=None, attribute="p_nom", opts={}):
         link_colors=line_colors["exp"],
         bus_sizes=bus_sizes / bus_size_factor,
         bus_colors=tech_colors,
-        # boundaries=map_boundaries,
+        boundaries=map_boundaries,
         color_geomap=True,
         geomap=True,
         ax=ax,
@@ -172,9 +173,9 @@ def plot_map(n, ax=None, attribute="p_nom", opts={}):
         line_colors=line_colors_with_alpha,
         link_colors=link_colors_with_alpha,
         bus_sizes=0,
-        # boundaries=map_boundaries,
+        boundaries=map_boundaries,
         color_geomap=True,
-        geomap=False,
+        geomap=True,
         ax=ax,
     )
     ax.set_aspect("equal")
@@ -1077,9 +1078,9 @@ if __name__ == "__main__":
             "plot_network",
             network="elec",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
+            clusters="30",
+            ll="copt",
+            opts="LC-3h",
             attr="p_nom",
             ext="pdf",
         )
@@ -1113,6 +1114,7 @@ if __name__ == "__main__":
             figsize=map_figsize, subplot_kw={"projection": ccrs.PlateCarree()}
         )
         plot_map(n, ax, snakemake.wildcards.attr, opts)
+
 
         fig.savefig(snakemake.output.only_map, dpi=150, bbox_inches="tight")
 

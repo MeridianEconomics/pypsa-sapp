@@ -486,7 +486,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_renewable_profiles", technology="hydro")
+        snakemake = mock_snakemake("build_renewable_profiles", technology="offwind-dc")
     configure_logging(snakemake)
 
     pgb.streams.wrap_stderr()
@@ -647,7 +647,8 @@ if __name__ == "__main__":
         capacity_per_sqkm = config["capacity_per_sqkm"]
 
         excluder = atlite.ExclusionContainer(crs=area_crs, res=100)
-
+        excluder_empty = atlite.ExclusionContainer(crs=area_crs, res=100)
+        
         if "natura" in config and config["natura"]:
             excluder.add_raster(paths.natura, nodata=0, allow_no_overlap=True)
 
@@ -693,7 +694,12 @@ if __name__ == "__main__":
             duration = time.time() - start
             logger.info(f"Completed availability calculation ({duration:2.2f}s)")
         else:
-            availability = cutout.availabilitymatrix(regions, excluder, **kwargs)
+            # Hot fix for if excluder does not overlap with the regions - True for RSA offshore wind
+            try:
+                availability = cutout.availabilitymatrix(regions, excluder, **kwargs)
+            except:
+                logger.warning(f"Excluder does not overlap with the regions, for {snakemake.wildcards.technology}. Running with empty excluder.")
+                availability = cutout.availabilitymatrix(regions, excluder_empty, **kwargs)
         area = cutout.grid.to_crs(area_crs).area / 1e6
         area = xr.DataArray(
             area.values.reshape(cutout.shape), [cutout.coords["y"], cutout.coords["x"]]
