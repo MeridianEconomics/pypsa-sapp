@@ -28,6 +28,9 @@ from fake_useragent import UserAgent
 from pypsa.components import component_attrs, components
 from shapely.geometry import Point
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 logger = logging.getLogger(__name__)
 
 currency_converter = CurrencyConverter(
@@ -1282,7 +1285,7 @@ def download_GADM(country_code, update=False, out_logging=False):
     GADM_url = f"https://biogeo.ucdavis.edu/data/gadm3.6/gpkg/{GADM_filename}_gpkg.zip"
     _logger = logging.getLogger(__name__)
     GADM_inputfile_zip = os.path.join(
-        os.getcwd(),
+        PYPSAEARTH_DIR,
         "data",
         "raw",
         "gadm",
@@ -1291,7 +1294,7 @@ def download_GADM(country_code, update=False, out_logging=False):
     )  # Input filepath zip
 
     GADM_inputfile_gpkg = os.path.join(
-        os.getcwd(),
+        PYPSAEARTH_DIR,
         "data",
         "raw",
         "gadm",

@@ -98,6 +98,9 @@ from _helpers import (
 )
 from tqdm import tqdm
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 logger = create_logger(__name__)
 
 
@@ -942,7 +945,7 @@ if __name__ == "__main__":
 
     # if some files are still missing, reroute to command-line-interface
     if any(
-        not os.path.isfile(file) if file != "data/landcover" else False
+        not os.path.isfile(file) if file != PYPSAEARTH_DIR+"data/landcover" else False
         for file in snakemake.output
     ):
         os.system("python scripts/non_workflow/databundle_cli.py")

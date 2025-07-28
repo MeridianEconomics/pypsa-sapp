@@ -30,6 +30,9 @@ from _helpers import (
 )
 from prepare_transport_data import prepare_transport_data
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 logger = logging.getLogger(__name__)
 
 spatial = SimpleNamespace()
@@ -268,7 +271,7 @@ def add_hydrogen(n, costs):
         if snakemake.params.h2_underground:
             custom_cavern = pd.read_csv(
                 os.path.join(
-                    BASE_DIR,
+                    PYPSAEARTH_DIR,
                     "data/custom/h2_underground_{0}_{1}.csv".format(
                         demand_sc, investment_year
                     ),
@@ -2788,7 +2791,7 @@ def add_custom_water_cost(n):
     for country in countries:
         water_costs = pd.read_csv(
             os.path.join(
-                BASE_DIR,
+                PYPSAEARTH_DIR,
                 "resources/custom_data/{}_water_costs.csv".format(country),
                 sep=",",
                 index_col=0,

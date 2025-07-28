@@ -34,6 +34,9 @@ from shapely.geometry import LineString, Point
 from shapely.ops import unary_union
 from shapely.validation import make_valid
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
@@ -65,7 +68,7 @@ def download_IGGIELGN_gas_network():
 
     # Save locations
     zip_fn = Path(os.path.join(BASE_DIR, "IGGIELGN.zip"))
-    to_fn = Path(os.path.join(BASE_DIR, "data/gas_network/scigrid-gas"))
+    to_fn = Path(os.path.join(PYPSAEARTH_DIR, "data/gas_network/scigrid-gas"))
 
     logger.info(f"Downloading databundle from '{url}'.")
     progress_retrieve(url, zip_fn)
@@ -350,7 +353,7 @@ def download_GADM(country_code, update=False, out_logging=False):
     GADM_filename = get_GADM_filename(country_code)
 
     GADM_inputfile_gpkg = os.path.join(
-        BASE_DIR,
+        PYPSAEARTH_DIR,
         "data",
         "gadm",
         GADM_filename,
@@ -399,7 +402,7 @@ def filter_gadm(
     # debug output to file
     if output_nonstd_to_csv and not geodf_non_std.empty:
         geodf_non_std.to_csv(
-            f"resources/non_standard_gadm{layer}_{cc}_raw.csv", index=False
+            PYPSAEARTH_DIR + f"resources/non_standard_gadm{layer}_{cc}_raw.csv", index=False
         )
 
     return geodf
@@ -895,7 +898,7 @@ if not snakemake.params.custom_gas_network:
         download_IGGIELGN_gas_network()
 
         gas_network = os.path.join(
-            BASE_DIR, "data/gas_network/scigrid-gas/data/IGGIELGN_PipeSegments.geojson"
+            PYPSAEARTH_DIR, "data/gas_network/scigrid-gas/data/IGGIELGN_PipeSegments.geojson"
         )
 
         pipelines = load_IGGIELGN_data(gas_network)

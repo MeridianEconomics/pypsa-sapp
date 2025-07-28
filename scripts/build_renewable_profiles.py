@@ -208,6 +208,9 @@ from dask.distributed import Client
 from pypsa.geo import haversine
 from shapely.geometry import LineString, Point, box
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 cc = coco.CountryConverter()
 
 logger = create_logger(__name__)
@@ -539,7 +542,7 @@ if __name__ == "__main__":
     # filter plants for hydro
     if snakemake.wildcards.technology.startswith("hydro"):
         country_shapes = gpd.read_file(paths.country_shapes)
-        hydrobasins_path = os.path.join(BASE_DIR, resource["hydrobasins"])
+        hydrobasins_path = os.path.join(PYPSAEARTH_DIR, resource["hydrobasins"])
         resource["hydrobasins"] = hydrobasins_path
         hydrobasins = gpd.read_file(hydrobasins_path)
         ppls = load_powerplants(snakemake.input.powerplants)

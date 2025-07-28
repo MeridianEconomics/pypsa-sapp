@@ -58,12 +58,15 @@ SECDIR = run["sector_name"] + "/" if run.get("sector_name") else ""
 SDIR = config["summary_dir"].strip("/") + f"/{SECDIR}"
 RESDIR = config["results_dir"].strip("/") + f"/{SECDIR}"
 
-load_data_paths = get_load_paths_gegis("data", config)
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
+load_data_paths = get_load_paths_gegis(PYPSAEARTH_DIR + "data", config)
 
 if config["enable"].get("retrieve_cost_data", True):
-    COSTS = "resources/" + RDIR + f"costs_{config['costs']['year']}.csv"
+    COSTS = PYPSAEARTH_DIR + "resources/" + RDIR + f"costs_{config['costs']['year']}.csv"
 else:
-    COSTS = "data/costs.csv"
+    COSTS = PYPSAEARTH_DIR + "data/costs.csv"
 ATLITE_NPROCESSES = config["atlite"].get("nprocesses", 4)
 
 
@@ -151,7 +154,7 @@ if config["enable"].get("retrieve_databundle", True):
             expand(
                 "{file}", file=datafiles_retrivedatabundle(config, bundles_to_download)
             ),
-            directory("data/landcover"),
+            directory(PYPSAEARTH_DIR + "data/landcover"),
         log:
             "logs/" + RDIR + "retrieve_databundle.log",
         benchmark:
@@ -166,11 +169,11 @@ if config["enable"].get("download_osm_data", True):
         params:
             countries=config["countries"],
         output:
-            cables="resources/" + RDIR + "osm/raw/all_raw_cables.geojson",
-            generators="resources/" + RDIR + "osm/raw/all_raw_generators.geojson",
-            generators_csv="resources/" + RDIR + "osm/raw/all_raw_generators.csv",
-            lines="resources/" + RDIR + "osm/raw/all_raw_lines.geojson",
-            substations="resources/" + RDIR + "osm/raw/all_raw_substations.geojson",
+            cables=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_cables.geojson",
+            generators=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_generators.geojson",
+            generators_csv=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_generators.csv",
+            lines=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_lines.geojson",
+            substations=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_substations.geojson",
         log:
             "logs/" + RDIR + "download_osm_data.log",
         benchmark:
@@ -184,18 +187,18 @@ rule clean_osm_data:
         crs=config["crs"],
         clean_osm_data_options=config["clean_osm_data_options"],
     input:
-        cables="resources/" + RDIR + "osm/raw/all_raw_cables.geojson",
-        generators="resources/" + RDIR + "osm/raw/all_raw_generators.geojson",
-        lines="resources/" + RDIR + "osm/raw/all_raw_lines.geojson",
-        substations="resources/" + RDIR + "osm/raw/all_raw_substations.geojson",
-        country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-        offshore_shapes="resources/" + RDIR + "shapes/offshore_shapes.geojson",
-        africa_shape="resources/" + RDIR + "shapes/africa_shape.geojson",
+        cables=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_cables.geojson",
+        generators=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_generators.geojson",
+        lines=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_lines.geojson",
+        substations=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/raw/all_raw_substations.geojson",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+        offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
+        africa_shape=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/africa_shape.geojson",
     output:
-        generators="resources/" + RDIR + "osm/clean/all_clean_generators.geojson",
-        generators_csv="resources/" + RDIR + "osm/clean/all_clean_generators.csv",
-        lines="resources/" + RDIR + "osm/clean/all_clean_lines.geojson",
-        substations="resources/" + RDIR + "osm/clean/all_clean_substations.geojson",
+        generators=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_generators.geojson",
+        generators_csv=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_generators.csv",
+        lines=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_lines.geojson",
+        substations=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_substations.geojson",
     log:
         "logs/" + RDIR + "clean_osm_data.log",
     benchmark:
@@ -210,17 +213,17 @@ rule build_osm_network:
         countries=config["countries"],
         crs=config["crs"],
     input:
-        generators="resources/" + RDIR + "osm/clean/all_clean_generators.geojson",
-        lines="resources/" + RDIR + "osm/clean/all_clean_lines.geojson",
-        substations="resources/" + RDIR + "osm/clean/all_clean_substations.geojson",
-        country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
+        generators=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_generators.geojson",
+        lines=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_lines.geojson",
+        substations=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_substations.geojson",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
     output:
-        lines="resources/" + RDIR + "base_network/all_lines_build_network.csv",
-        converters="resources/" + RDIR + "base_network/all_converters_build_network.csv",
-        transformers="resources/"
+        lines=PYPSAEARTH_DIR + "resources/" + RDIR + "base_network/all_lines_build_network.csv",
+        converters=PYPSAEARTH_DIR + "resources/" + RDIR + "base_network/all_converters_build_network.csv",
+        transformers=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "base_network/all_transformers_build_network.csv",
-        substations="resources/" + RDIR + "base_network/all_buses_build_network.csv",
+        substations=PYPSAEARTH_DIR + "resources/" + RDIR + "base_network/all_buses_build_network.csv",
     log:
         "logs/" + RDIR + "build_osm_network.log",
     benchmark:
@@ -241,13 +244,13 @@ rule build_shapes:
         # nuts3='data/bundle/NUTS_2013_60M_SH/data/NUTS_RG_60M_2013.shp',
         # nuts3pop='data/bundle/nama_10r_3popgdp.tsv.gz',
         # nuts3gdp='data/bundle/nama_10r_3gdp.tsv.gz',
-        eez="data/eez/eez_v11.gpkg",
+        eez=PYPSAEARTH_DIR + "data/eez/eez_v11.gpkg",
     output:
-        country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-        offshore_shapes="resources/" + RDIR + "shapes/offshore_shapes.geojson",
-        africa_shape="resources/" + RDIR + "shapes/africa_shape.geojson",
-        gadm_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
-        subregion_shapes="resources/" + RDIR + "shapes/subregion_shapes.geojson",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+        offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
+        africa_shape=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/africa_shape.geojson",
+        gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
+        subregion_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/subregion_shapes.geojson",
     log:
         "logs/" + RDIR + "build_shapes.log",
     benchmark:
@@ -270,16 +273,16 @@ rule base_network:
         countries=config["countries"],
         base_network=config["base_network"],
     input:
-        osm_buses="resources/" + RDIR + "base_network/all_buses_build_network.csv",
-        osm_lines="resources/" + RDIR + "base_network/all_lines_build_network.csv",
-        osm_converters="resources/"
+        osm_buses=PYPSAEARTH_DIR + "resources/" + RDIR + "base_network/all_buses_build_network.csv",
+        osm_lines=PYPSAEARTH_DIR + "resources/" + RDIR + "base_network/all_lines_build_network.csv",
+        osm_converters=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "base_network/all_converters_build_network.csv",
-        osm_transformers="resources/"
+        osm_transformers=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "base_network/all_transformers_build_network.csv",
-        country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-        offshore_shapes="resources/" + RDIR + "shapes/offshore_shapes.geojson",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+        offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
     output:
         "networks/" + RDIR + "base.nc",
     log:
@@ -299,17 +302,17 @@ rule build_bus_regions:
         crs=config["crs"],
         countries=config["countries"],
     input:
-        country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-        offshore_shapes="resources/" + RDIR + "shapes/offshore_shapes.geojson",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+        offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
         base_network="networks/" + RDIR + "base.nc",
         #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
         #using this line instead of the following will test updated gadm shapes for MA.
         #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
         #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-        gadm_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
+        gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
     output:
-        regions_onshore="resources/" + RDIR + "bus_regions/regions_onshore.geojson",
-        regions_offshore="resources/" + RDIR + "bus_regions/regions_offshore.geojson",
+        regions_onshore=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_onshore.geojson",
+        regions_offshore=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_offshore.geojson",
     log:
         "logs/" + RDIR + "build_bus_regions.log",
     benchmark:
@@ -331,7 +334,7 @@ def terminate_if_cutout_exists(config=config):
     ] + list(config["atlite"]["cutouts"].keys())
 
     for ct in set(config_cutouts):
-        cutout_fl = "cutouts/" + CDIR + ct + ".nc"
+        cutout_fl = PYPSAEARTH_DIR + "cutouts/" + CDIR + ct + ".nc"
         if os.path.exists(cutout_fl):
             raise Exception(
                 "An option `build_cutout` is enabled, while a cutout file '"
@@ -348,10 +351,10 @@ if config["enable"].get("build_cutout", False):
             snapshots=config["snapshots"],
             cutouts=config["atlite"]["cutouts"],
         input:
-            onshore_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-            offshore_shapes="resources/" + RDIR + "shapes/offshore_shapes.geojson",
+            onshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+            offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
         output:
-            "cutouts/" + CDIR + "{cutout}.nc",
+            PYPSAEARTH_DIR + "cutouts/" + CDIR + "{cutout}.nc",
         log:
             "logs/" + RDIR + "build_cutout/{cutout}.log",
         benchmark:
@@ -369,13 +372,13 @@ if config["enable"].get("build_natura_raster", False):
         params:
             area_crs=config["crs"]["area_crs"],
         input:
-            shapefiles_land="data/landcover",
+            shapefiles_land=PYPSAEARTH_DIR + "data/landcover",
             cutouts=expand(
-                "cutouts/" + CDIR + "{cutout}.nc",
+                PYPSAEARTH_DIR + "cutouts/" + CDIR + "{cutout}.nc",
                 cutout=[c["cutout"] for _, c in config["renewable"].items()],
             ),
         output:
-            "resources/" + RDIR + "natura.tiff",
+            PYPSAEARTH_DIR + "resources/" + RDIR + "natura.tiff",
         log:
             "logs/" + RDIR + "build_natura_raster.log",
         benchmark:
@@ -388,9 +391,9 @@ if not config["enable"].get("build_natura_raster", False):
 
     rule copy_defaultnatura_tiff:
         input:
-            "data/natura/natura.tiff",
+            PYPSAEARTH_DIR + "data/natura/natura.tiff",
         output:
-            "resources/" + RDIR + "natura.tiff",
+            PYPSAEARTH_DIR + "resources/" + RDIR + "natura.tiff",
         run:
             import shutil
 
@@ -409,7 +412,7 @@ if config["enable"].get("retrieve_cost_data", True):
                 keep_local=True,
             ),
         output:
-            "resources/" + RDIR + "costs_{year}.csv",
+            PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{year}.csv",
         log:
             "logs/" + RDIR + "retrieve_cost_data_{year}.log",
         resources:
@@ -425,15 +428,15 @@ rule build_demand_profiles:
         countries=config["countries"],
     input:
         base_network="networks/" + RDIR + "base.nc",
-        regions="resources/" + RDIR + "bus_regions/regions_onshore.geojson",
+        regions=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_onshore.geojson",
         load=load_data_paths,
         #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
         #using this line instead of the following will test updated gadm shapes for MA.
         #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
         #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-        gadm_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
+        gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
     output:
-        "resources/" + RDIR + "demand_profiles.csv",
+        PYPSAEARTH_DIR + "resources/" + RDIR + "demand_profiles.csv",
     log:
         "logs/" + RDIR + "build_demand_profiles.log",
     benchmark:
@@ -452,25 +455,25 @@ rule build_renewable_profiles:
         countries=config["countries"],
         alternative_clustering=config["cluster_options"]["alternative_clustering"],
     input:
-        natura="resources/" + RDIR + "natura.tiff",
-        copernicus="data/copernicus/PROBAV_LC100_global_v3.0.1_2019-nrt_Discrete-Classification-map_EPSG-4326.tif",
-        gebco="data/gebco/GEBCO_2021_TID.nc",
-        country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-        offshore_shapes="resources/" + RDIR + "shapes/offshore_shapes.geojson",
-        hydro_capacities="data/hydro_capacities.csv",
-        eia_hydro_generation="data/eia_hydro_annual_generation.csv",
-        powerplants="resources/" + RDIR + "powerplants.csv",
+        natura=PYPSAEARTH_DIR + "resources/" + RDIR + "natura.tiff",
+        copernicus=PYPSAEARTH_DIR + "data/copernicus/PROBAV_LC100_global_v3.0.1_2019-nrt_Discrete-Classification-map_EPSG-4326.tif",
+        gebco=PYPSAEARTH_DIR + "data/gebco/GEBCO_2021_TID.nc",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+        offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
+        hydro_capacities=PYPSAEARTH_DIR + "data/hydro_capacities.csv",
+        eia_hydro_generation=PYPSAEARTH_DIR + "data/eia_hydro_annual_generation.csv",
+        powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
         regions=lambda w: (
-            "resources/" + RDIR + "bus_regions/regions_onshore.geojson"
+            PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_onshore.geojson"
             if w.technology in ("onwind", "solar", "hydro", "csp")
-            else "resources/" + RDIR + "bus_regions/regions_offshore.geojson"
+            else PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_offshore.geojson"
         ),
-        cutout=lambda w: "cutouts/"
+        cutout=lambda w: PYPSAEARTH_DIR + "cutouts/"
         + CDIR
         + config["renewable"][w.technology]["cutout"]
         + ".nc",
     output:
-        profile="resources/" + RDIR + "renewable_profiles/profile_{technology}.nc",
+        profile=PYPSAEARTH_DIR + "resources/" + RDIR + "renewable_profiles/profile_{technology}.nc",
     log:
         "logs/" + RDIR + "build_renewable_profile_{technology}.log",
     benchmark:
@@ -492,16 +495,16 @@ rule build_powerplants:
     input:
         base_network="networks/" + RDIR + "base.nc",
         pm_config="configs/powerplantmatching_config.yaml",
-        custom_powerplants="data/custom_powerplants.csv",
-        osm_powerplants="resources/" + RDIR + "osm/clean/all_clean_generators.csv",
+        custom_powerplants=PYPSAEARTH_DIR + "data/custom_powerplants.csv",
+        osm_powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "osm/clean/all_clean_generators.csv",
         #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
         #using this line instead of the following will test updated gadm shapes for MA.
         #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
         #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-        gadm_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
+        gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
     output:
-        powerplants="resources/" + RDIR + "powerplants.csv",
-        powerplants_osm2pm="resources/" + RDIR + "powerplants_osm2pm.csv",
+        powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
+        powerplants_osm2pm=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants_osm2pm.csv",
     log:
         "logs/" + RDIR + "build_powerplants.log",
     benchmark:
@@ -524,7 +527,7 @@ rule add_electricity:
         length_factor=config["lines"]["length_factor"],
     input:
         **{
-            f"profile_{tech}": "resources/"
+            f"profile_{tech}": PYPSAEARTH_DIR + "resources/"
             + RDIR
             + f"renewable_profiles/profile_{tech}.nc"
             for tech in config["renewable"]
@@ -534,18 +537,18 @@ rule add_electricity:
             f"conventional_{carrier}_{attr}": fn
             for carrier, d in config.get("conventional", {None: {}}).items()
             for attr, fn in d.items()
-            if str(fn).startswith("data/")
+            if str(fn).startswith(PYPSAEARTH_DIR + "data/")
         },
         base_network="networks/" + RDIR + "base.nc",
         tech_costs=COSTS,
-        powerplants="resources/" + RDIR + "powerplants.csv",
+        powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
         #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
         #using this line instead of the following will test updated gadm shapes for MA.
         #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
         #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-        gadm_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
-        hydro_capacities="data/hydro_capacities.csv",
-        demand_profiles="resources/" + RDIR + "demand_profiles.csv",
+        gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
+        hydro_capacities=PYPSAEARTH_DIR + "data/hydro_capacities.csv",
+        demand_profiles=PYPSAEARTH_DIR + "resources/" + RDIR + "demand_profiles.csv",
     output:
         "networks/" + RDIR + "elec.nc",
     log:
@@ -576,20 +579,20 @@ rule simplify_network:
     input:
         network="networks/" + RDIR + "elec.nc",
         tech_costs=COSTS,
-        regions_onshore="resources/" + RDIR + "bus_regions/regions_onshore.geojson",
-        regions_offshore="resources/" + RDIR + "bus_regions/regions_offshore.geojson",
-        country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-        subregion_shapes="resources/" + RDIR + "shapes/subregion_shapes.geojson",
+        regions_onshore=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_onshore.geojson",
+        regions_offshore=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_offshore.geojson",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+        subregion_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/subregion_shapes.geojson",
     output:
         network="networks/" + RDIR + "elec_s{simpl}.nc",
-        regions_onshore="resources/"
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}.geojson",
-        regions_offshore="resources/"
+        regions_offshore=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_offshore_elec_s{simpl}.geojson",
-        busmap="resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
-        connection_costs="resources/"
+        busmap=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
+        connection_costs=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/connection_costs_s{simpl}.csv",
     log:
@@ -620,34 +623,34 @@ if config["augmented_line_connection"].get("add_to_snakefile", False) == True:
             #custom_busmap=config["enable"].get("custom_busmap", False)
         input:
             network="networks/" + RDIR + "elec_s{simpl}.nc",
-            country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-            regions_onshore="resources/"
+            country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+            regions_onshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_onshore_elec_s{simpl}.geojson",
-            regions_offshore="resources/"
+            regions_offshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_offshore_elec_s{simpl}.geojson",
             #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
             #using this line instead of the following will test updated gadm shapes for MA.
             #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
             #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-            gadm_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
+            gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
             # busmap=ancient('resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv'),
             # custom_busmap=("data/custom_busmap_elec_s{simpl}_{clusters}.csv"
             #                if config["enable"].get("custom_busmap", False) else []),
             tech_costs=COSTS,
         output:
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
-            regions_onshore="resources/"
+            regions_onshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-            regions_offshore="resources/"
+            regions_offshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
-            busmap="resources/"
+            busmap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
-            linemap="resources/"
+            linemap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/linemap_elec_s{simpl}_{clusters}.csv",
         log:
@@ -670,10 +673,10 @@ if config["augmented_line_connection"].get("add_to_snakefile", False) == True:
         input:
             tech_costs=COSTS,
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
-            regions_onshore="resources/"
+            regions_onshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-            regions_offshore="resources/"
+            regions_offshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
         output:
@@ -706,34 +709,34 @@ if config["augmented_line_connection"].get("add_to_snakefile", False) == False:
             focus_weights=config.get("focus_weights", None),
         input:
             network="networks/" + RDIR + "elec_s{simpl}.nc",
-            country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
-            regions_onshore="resources/"
+            country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+            regions_onshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_onshore_elec_s{simpl}.geojson",
-            regions_offshore="resources/"
+            regions_offshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_offshore_elec_s{simpl}.geojson",
             #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
             #using this line instead of the following will test updated gadm shapes for MA.
             #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
             #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-            gadm_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
+            gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
             # busmap=ancient('resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv'),
             # custom_busmap=("data/custom_busmap_elec_s{simpl}_{clusters}.csv"
             #                if config["enable"].get("custom_busmap", False) else []),
             tech_costs=COSTS,
         output:
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
-            regions_onshore="resources/"
+            regions_onshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-            regions_offshore="resources/"
+            regions_offshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
-            busmap="resources/"
+            busmap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
-            linemap="resources/"
+            linemap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/linemap_elec_s{simpl}_{clusters}.csv",
         log:
@@ -751,7 +754,7 @@ rule add_extra_components:
     params:
         transmission_efficiency=config["sector"]["transmission_efficiency"],
     input:
-        overrides="data/override_component_attrs",
+        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
         tech_costs=COSTS,
     output:
@@ -825,7 +828,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == False:
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
         input:
-            overrides=BASE_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         output:
             "results/" + RDIR + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
@@ -892,7 +895,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == True:
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
         input:
-            overrides=BASE_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             network="networks/"
             + RDIR
             + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{unc}.nc",
@@ -1013,8 +1016,8 @@ rule prepare_ports:
     params:
         custom_export=config["custom_data"]["export_ports"],
     output:
-        ports="resources/" + SECDIR + "ports.csv",
-        export_ports="resources/" + SECDIR + "export_ports.csv",
+        ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "ports.csv",
+        export_ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "export_ports.csv",
     script:
         "scripts/prepare_ports.py"
 
@@ -1024,21 +1027,21 @@ rule prepare_airports:
         airport_sizing_factor=config["sector"]["airport_sizing_factor"],
         airport_custom_data=config["custom_data"]["airports"],
     output:
-        ports="resources/" + SECDIR + "airports.csv",
+        ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "airports.csv",
     script:
         "scripts/prepare_airports.py"
 
 
 rule prepare_urban_percent:
     output:
-        urban_percent="resources/" + SECDIR + "urban_percent.csv",
+        urban_percent=PYPSAEARTH_DIR + "resources/" + SECDIR + "urban_percent.csv",
     script:
         "scripts/prepare_urban_percent.py"
 
 
 rule prepare_transport_data_input:
     output:
-        transport_data_input="resources/" + SECDIR + "transport_data.csv",
+        transport_data_input=PYPSAEARTH_DIR + "resources/" + SECDIR + "transport_data.csv",
     script:
         "scripts/prepare_transport_data_input.py"
 
@@ -1059,11 +1062,11 @@ if not config["custom_data"]["gas_network"]:
             geo_crs=config["crs"]["geo_crs"],
             custom_gas_network=config["custom_data"]["gas_network"],
         input:
-            regions_onshore="resources/"
+            regions_onshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
         output:
-            clustered_gas_network="resources/"
+            clustered_gas_network=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "gas_networks/gas_network_elec_s{simpl}_{clusters}.csv",
             # TODO: Should be a own snakemake rule
@@ -1089,58 +1092,58 @@ rule prepare_sector_network:
     input:
         network=RESDIR
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_presec.nc",
-        costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
-        h2_cavern="data/hydrogen_salt_cavern_potentials.csv",
-        nodal_energy_totals="resources/"
+        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        h2_cavern=PYPSAEARTH_DIR + "data/hydrogen_salt_cavern_potentials.csv",
+        nodal_energy_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/nodal_energy_heat_totals_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        transport="resources/"
+        transport=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/transport_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        avail_profile="resources/"
+        avail_profile=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "pattern_profiles/avail_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        dsm_profile="resources/"
+        dsm_profile=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "pattern_profiles/dsm_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        nodal_transport_data="resources/"
+        nodal_transport_data=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/nodal_transport_data_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        overrides="data/override_component_attrs",
-        clustered_pop_layout="resources/"
+        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
+        clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        industrial_demand="resources/"
+        industrial_demand=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/industrial_energy_demand_per_node_elec_s{simpl}_{clusters}_{planning_horizons}_{demand}.csv",
-        energy_totals="resources/"
+        energy_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "energy_totals_{demand}_{planning_horizons}.csv",
-        airports="resources/" + SECDIR + "airports.csv",
-        ports="resources/" + SECDIR + "ports.csv",
-        heat_demand="resources/"
+        airports=PYPSAEARTH_DIR + "resources/" + SECDIR + "airports.csv",
+        ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "ports.csv",
+        heat_demand=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/heat_demand_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        ashp_cop="resources/"
+        ashp_cop=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/ashp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        gshp_cop="resources/"
+        gshp_cop=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/gshp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        solar_thermal="resources/"
+        solar_thermal=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/solar_thermal_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        district_heat_share="resources/"
+        district_heat_share=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/district_heat_share_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        biomass_transport_costs="data/temp_hard_coded/biomass_transport_costs.csv",
-        shapes_path="resources/"
+        biomass_transport_costs=PYPSAEARTH_DIR + "data/temp_hard_coded/biomass_transport_costs.csv",
+        shapes_path=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
         pipelines=(
-            "data/custom/pipelines.csv"
+            PYPSAEARTH_DIR + "data/custom/pipelines.csv"
             if config["custom_data"]["gas_network"]
-            else "resources/"
+            else PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "gas_networks/gas_network_elec_s{simpl}_{clusters}.csv"
         ),
@@ -1164,7 +1167,7 @@ rule build_ship_profile:
         snapshots=config["snapshots"],
         ship_opts=config["export"]["ship"],
     output:
-        ship_profile="resources/" + SECDIR + "ship_profile_{h2export}TWh.csv",
+        ship_profile=PYPSAEARTH_DIR + "resources/" + SECDIR + "ship_profile_{h2export}TWh.csv",
     script:
         "scripts/build_ship_profile.py"
 
@@ -1181,13 +1184,13 @@ rule add_export:
         snapshots=config["snapshots"],
         costs=config["costs"],
     input:
-        overrides="data/override_component_attrs",
-        export_ports="resources/" + SECDIR + "export_ports.csv",
-        costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
-        ship_profile="resources/" + SECDIR + "ship_profile_{h2export}TWh.csv",
+        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
+        export_ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "export_ports.csv",
+        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        ship_profile=PYPSAEARTH_DIR + "resources/" + SECDIR + "ship_profile_{h2export}TWh.csv",
         network=RESDIR
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}.nc",
-        shapes_path="resources/"
+        shapes_path=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
     output:
@@ -1204,7 +1207,7 @@ rule override_respot:
         countries=config["countries"],
     input:
         **{
-            f"custom_res_pot_{tech}_{planning_horizons}_{discountrate}": "resources/"
+            f"custom_res_pot_{tech}_{planning_horizons}_{discountrate}": PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + f"custom_renewables/{tech}_{planning_horizons}_{discountrate}_potential.csv"
             for tech in config["custom_data"]["renewables"]
@@ -1212,16 +1215,16 @@ rule override_respot:
             for planning_horizons in config["scenario"]["planning_horizons"]
         },
         **{
-            f"custom_res_ins_{tech}_{planning_horizons}_{discountrate}": "resources/"
+            f"custom_res_ins_{tech}_{planning_horizons}_{discountrate}": PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + f"custom_renewables/{tech}_{planning_horizons}_{discountrate}_installable.csv"
             for tech in config["custom_data"]["renewables"]
             for discountrate in config["costs"]["discountrate"]
             for planning_horizons in config["scenario"]["planning_horizons"]
         },
-        overrides="data/override_component_attrs",
+        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-        energy_totals="resources/"
+        energy_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "energy_totals_{demand}_{planning_horizons}.csv",
     output:
@@ -1234,30 +1237,30 @@ rule override_respot:
 rule prepare_transport_data:
     input:
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
-        energy_totals_name="resources/"
+        energy_totals_name=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "energy_totals_{demand}_{planning_horizons}.csv",
-        traffic_data_KFZ="data/emobility/KFZ__count",
-        traffic_data_Pkw="data/emobility/Pkw__count",
-        transport_name="resources/" + SECDIR + "transport_data.csv",
-        clustered_pop_layout="resources/"
+        traffic_data_KFZ=PYPSAEARTH_DIR + "data/emobility/KFZ__count",
+        traffic_data_Pkw=PYPSAEARTH_DIR + "data/emobility/Pkw__count",
+        transport_name=PYPSAEARTH_DIR + "resources/" + SECDIR + "transport_data.csv",
+        clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        temp_air_total="resources/"
+        temp_air_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
     output:
         # nodal_energy_totals="resources/nodal_energy_totals_s{simpl}_{clusters}.csv",
-        transport="resources/"
+        transport=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/transport_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        avail_profile="resources/"
+        avail_profile=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "pattern_profiles/avail_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        dsm_profile="resources/"
+        dsm_profile=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "pattern_profiles/dsm_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        nodal_transport_data="resources/"
+        nodal_transport_data=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/nodal_transport_data_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
     script:
@@ -1268,41 +1271,41 @@ rule build_cop_profiles:
     params:
         heat_pump_sink_T=config["sector"]["heat_pump_sink_T"],
     input:
-        temp_soil_total="resources/"
+        temp_soil_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_soil_rural="resources/"
+        temp_soil_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_soil_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_soil_urban="resources/"
+        temp_soil_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_soil_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_air_total="resources/"
+        temp_air_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
         temp_air_rural="resources/"
         + SECDIR
         + "temperatures/temp_air_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_air_urban="resources/"
+        temp_air_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
     output:
-        cop_soil_total="resources/"
+        cop_soil_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        cop_soil_rural="resources/"
+        cop_soil_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_soil_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        cop_soil_urban="resources/"
+        cop_soil_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_soil_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        cop_air_total="resources/"
+        cop_air_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        cop_air_rural="resources/"
+        cop_air_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_air_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        cop_air_urban="resources/"
+        cop_air_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_air_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
     resources:
@@ -1320,45 +1323,45 @@ rule build_cop_profiles:
 rule prepare_heat_data:
     input:
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
-        energy_totals_name="resources/"
+        energy_totals_name=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "energy_totals_{demand}_{planning_horizons}.csv",
-        clustered_pop_layout="resources/"
+        clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        temp_air_total="resources/"
+        temp_air_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        cop_soil_total="resources/"
+        cop_soil_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        cop_air_total="resources/"
+        cop_air_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        solar_thermal_total="resources/"
+        solar_thermal_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/solar_thermal_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        heat_demand_total="resources/"
+        heat_demand_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/heat_demand_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        heat_profile="data/heat_load_profile_BDEW.csv",
+        heat_profile=PYPSAEARTH_DIR + "data/heat_load_profile_BDEW.csv",
     output:
-        nodal_energy_totals="resources/"
+        nodal_energy_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/nodal_energy_heat_totals_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        heat_demand="resources/"
+        heat_demand=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/heat_demand_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        ashp_cop="resources/"
+        ashp_cop=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/ashp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        gshp_cop="resources/"
+        gshp_cop=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/gshp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        solar_thermal="resources/"
+        solar_thermal=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/solar_thermal_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        district_heat_share="resources/"
+        district_heat_share=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/district_heat_share_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
     script:
@@ -1373,10 +1376,10 @@ rule build_base_energy_totals:
         countries=config["countries"],
         shift_coal_to_elec=config["sector"]["coal"]["shift_to_elec"],
     input:
-        unsd_paths="data/demand/unsd/paths/Energy_Statistics_Database.xlsx",
+        unsd_paths=PYPSAEARTH_DIR + "data/demand/unsd/paths/Energy_Statistics_Database.xlsx",
     output:
-        energy_totals_base="resources/" + SECDIR + "energy_totals_base.csv",
-        unsd_export_path=directory("data/demand/unsd/data/"),
+        energy_totals_base=PYPSAEARTH_DIR + "resources/" + SECDIR + "energy_totals_base.csv",
+        unsd_export_path=directory(PYPSAEARTH_DIR + "data/demand/unsd/data/"),
     script:
         "scripts/build_base_energy_totals.py"
 
@@ -1387,13 +1390,13 @@ rule prepare_energy_totals:
         base_year=config["demand_data"]["base_year"],
         sector_options=config["sector"],
     input:
-        unsd_paths="resources/" + SECDIR + "energy_totals_base.csv",
-        efficiency_gains_cagr="data/demand/efficiency_gains_cagr.csv",
-        growth_factors_cagr="data/demand/growth_factors_cagr.csv",
-        district_heating="data/demand/district_heating.csv",
-        fuel_shares="data/demand/fuel_shares.csv",
+        unsd_paths=PYPSAEARTH_DIR + "resources/" + SECDIR + "energy_totals_base.csv",
+        efficiency_gains_cagr=PYPSAEARTH_DIR + "data/demand/efficiency_gains_cagr.csv",
+        growth_factors_cagr=PYPSAEARTH_DIR + "data/demand/growth_factors_cagr.csv",
+        district_heating=PYPSAEARTH_DIR + "data/demand/district_heating.csv",
+        fuel_shares=PYPSAEARTH_DIR + "data/demand/fuel_shares.csv",
     output:
-        energy_totals="resources/"
+        energy_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "energy_totals_{demand}_{planning_horizons}.csv",
     script:
@@ -1405,31 +1408,31 @@ rule build_solar_thermal_profiles:
         solar_thermal_config=config["solar_thermal"],
         snapshots=config["snapshots"],
     input:
-        pop_layout_total="resources/"
+        pop_layout_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_total_{planning_horizons}.nc",
-        pop_layout_urban="resources/"
+        pop_layout_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_urban_{planning_horizons}.nc",
-        pop_layout_rural="resources/"
+        pop_layout_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_rural_{planning_horizons}.nc",
-        regions_onshore="resources/"
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        cutout="cutouts/"
+        cutout=PYPSAEARTH_DIR + "cutouts/"
         + CDIR
         + [c["cutout"] for _, c in config["renewable"].items()][0]
         + ".nc",
         # default to first cutout found
     output:
-        solar_thermal_total="resources/"
+        solar_thermal_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/solar_thermal_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        solar_thermal_urban="resources/"
+        solar_thermal_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/solar_thermal_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        solar_thermal_rural="resources/"
+        solar_thermal_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/solar_thermal_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
     resources:
@@ -1448,24 +1451,24 @@ rule build_population_layouts:
     params:
         planning_horizons=config["scenario"]["planning_horizons"][0],
     input:
-        nuts3_shapes="resources/" + RDIR + "shapes/gadm_shapes.geojson",
-        urban_percent="resources/" + SECDIR + "urban_percent.csv",
-        cutout="cutouts/"
+        nuts3_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
+        urban_percent=PYPSAEARTH_DIR + "resources/" + SECDIR + "urban_percent.csv",
+        cutout=PYPSAEARTH_DIR + "cutouts/"
         + CDIR
         + [c["cutout"] for _, c in config["renewable"].items()][0]
         + ".nc",
         # default to first cutout found
     output:
-        pop_layout_total="resources/"
+        pop_layout_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_total_{planning_horizons}.nc",
-        pop_layout_urban="resources/"
+        pop_layout_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_urban_{planning_horizons}.nc",
-        pop_layout_rural="resources/"
+        pop_layout_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_rural_{planning_horizons}.nc",
-        gdp_layout="resources/"
+        gdp_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "gdp_shares/gdp_layout_{planning_horizons}.nc",
     resources:
@@ -1479,40 +1482,40 @@ rule build_population_layouts:
 
 rule move_hardcoded_files_temp:
     input:
-        "data/temp_hard_coded/energy_totals.csv",
+        PYPSAEARTH_DIR + "data/temp_hard_coded/energy_totals.csv",
     output:
-        "resources/" + SECDIR + "energy_totals.csv",
+        PYPSAEARTH_DIR + "resources/" + SECDIR + "energy_totals.csv",
     shell:
-        "cp -a data/temp_hard_coded/. resources"
+        "cp -a "+ PYPSAEARTH_DIR + "data/temp_hard_coded/. resources"
 
 
 rule build_clustered_population_layouts:
     input:
-        pop_layout_total="resources/"
+        pop_layout_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_total_{planning_horizons}.nc",
-        pop_layout_urban="resources/"
+        pop_layout_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_urban_{planning_horizons}.nc",
-        pop_layout_rural="resources/"
+        pop_layout_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_rural_{planning_horizons}.nc",
-        gdp_layout="resources/"
+        gdp_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "gdp_shares/gdp_layout_{planning_horizons}.nc",
-        regions_onshore="resources/"
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        cutout="cutouts/"
+        cutout=PYPSAEARTH_DIR + "cutouts/"
         + CDIR
         + [c["cutout"] for _, c in config["renewable"].items()][0]
         + ".nc",
         # default to first cutout found
     output:
-        clustered_pop_layout="resources/"
+        clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        clustered_gdp_layout="resources/"
+        clustered_gdp_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "gdp_shares/gdp_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
     resources:
@@ -1531,31 +1534,31 @@ rule build_heat_demand:
     params:
         snapshots=config["snapshots"],
     input:
-        pop_layout_total="resources/"
+        pop_layout_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_total_{planning_horizons}.nc",
-        pop_layout_urban="resources/"
+        pop_layout_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_urban_{planning_horizons}.nc",
-        pop_layout_rural="resources/"
+        pop_layout_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_rural_{planning_horizons}.nc",
-        regions_onshore="resources/"
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        cutout="cutouts/"
+        cutout=PYPSAEARTH_DIR + "cutouts/"
         + CDIR
         + [c["cutout"] for _, c in config["renewable"].items()][0]
         + ".nc",
         # default to first cutout found
     output:
-        heat_demand_urban="resources/"
+        heat_demand_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/heat_demand_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        heat_demand_rural="resources/"
+        heat_demand_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/heat_demand_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        heat_demand_total="resources/"
+        heat_demand_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/heat_demand_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
     resources:
@@ -1574,40 +1577,40 @@ rule build_temperature_profiles:
     params:
         snapshots=config["snapshots"],
     input:
-        pop_layout_total="resources/"
+        pop_layout_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_total_{planning_horizons}.nc",
-        pop_layout_urban="resources/"
+        pop_layout_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_urban_{planning_horizons}.nc",
-        pop_layout_rural="resources/"
+        pop_layout_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_rural_{planning_horizons}.nc",
-        regions_onshore="resources/"
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        cutout="cutouts/"
+        cutout=PYPSAEARTH_DIR + "cutouts/"
         + CDIR
         + [c["cutout"] for _, c in config["renewable"].items()][0]
         + ".nc",
         # default to first cutout found
     output:
-        temp_soil_total="resources/"
+        temp_soil_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_soil_rural="resources/"
+        temp_soil_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_soil_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_soil_urban="resources/"
+        temp_soil_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_soil_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_air_total="resources/"
+        temp_air_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_air_rural="resources/"
+        temp_air_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_air_urban="resources/"
+        temp_air_urban=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_urban_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
     resources:
@@ -1645,12 +1648,12 @@ if config["foresight"] == "overnight":
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
         input:
-            overrides=BASE_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             # network=RESDIR
             # + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}.nc",
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
-            costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
         output:
             RESDIR
@@ -1687,7 +1690,7 @@ rule make_sector_summary:
         h2export_qty=config["export"]["h2export"],
         foresight=config["foresight"],
     input:
-        overrides="data/override_component_attrs",
+        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         networks=expand(
             RESDIR
             + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
@@ -1695,7 +1698,7 @@ rule make_sector_summary:
             **config["costs"],
             **config["export"],
         ),
-        costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
+        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
         plots=expand(
             RESDIR
             + "maps/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}-costs-all_{planning_horizons}_{discountrate}_{demand}_{h2export}export.pdf",
@@ -1754,7 +1757,7 @@ rule plot_network:
         network="results/"
         + RDIR
         + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-        africa_shape="resources/" + RDIR + "shapes/africa_shape.geojson",
+        africa_shape=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/africa_shape.geojson",
         tech_costs=COSTS,
     output:
         only_map="results/"
@@ -1787,7 +1790,7 @@ rule make_statistics:
 
 rule plot_sector_network:
     input:
-        overrides="data/override_component_attrs",
+        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         network=RESDIR
         + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
     output:
@@ -1825,7 +1828,7 @@ rule plot_sector_summary:
 
 rule build_industrial_database:
     output:
-        industrial_database="data/industrial_database.csv",
+        industrial_database=PYPSAEARTH_DIR + "data/industrial_database.csv",
     script:
         "scripts/build_industrial_database.py"
 
@@ -1858,21 +1861,21 @@ rule build_industrial_distribution_key:  #default data
         alternative_clustering=config["cluster_options"]["alternative_clustering"],
         industry_database=config["custom_data"]["industry_database"],
     input:
-        regions_onshore="resources/"
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        clustered_pop_layout="resources/"
+        clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        clustered_gdp_layout="resources/"
+        clustered_gdp_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "gdp_shares/gdp_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        industrial_database="data/industrial_database.csv",
-        shapes_path="resources/"
+        industrial_database=PYPSAEARTH_DIR + "data/industrial_database.csv",
+        shapes_path=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
     output:
-        industrial_distribution_key="resources/"
+        industrial_distribution_key=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/industrial_distribution_key_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
     threads: 1
@@ -1896,11 +1899,11 @@ rule build_base_industry_totals:  #default data
     input:
         #os.path.dirname(snakemake.input["transactions_path"]) + "/demand/unsd/data/"
         #industrial_production_per_country="data/industrial_production_per_country.csv",
-        unsd_export_path="data/demand/unsd/data/",
-        energy_totals_base="resources/" + SECDIR + "energy_totals_base.csv",
-        transactions_path="data/unsd_transactions.csv",
+        unsd_export_path=PYPSAEARTH_DIR + "data/demand/unsd/data/",
+        energy_totals_base=PYPSAEARTH_DIR + "resources/" + SECDIR + "energy_totals_base.csv",
+        transactions_path=PYPSAEARTH_DIR + "data/unsd_transactions.csv",
     output:
-        base_industry_totals="resources/"
+        base_industry_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/base_industry_totals_{planning_horizons}_{demand}.csv",
     threads: 1
@@ -1924,19 +1927,19 @@ rule build_industry_demand:  #default data
         industry_util_factor=config["sector"]["industry_util_factor"],
         aluminium_year=config["demand_data"]["aluminium_year"],
     input:
-        industrial_distribution_key="resources/"
+        industrial_distribution_key=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/industrial_distribution_key_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
         #industrial_production_per_country_tomorrow="resources/demand/industrial_production_per_country_tomorrow_{planning_horizons}_{demand}.csv",
         #industrial_production_per_country="data/industrial_production_per_country.csv",
-        base_industry_totals="resources/"
+        base_industry_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/base_industry_totals_{planning_horizons}_{demand}.csv",
-        industrial_database="data/industrial_database.csv",
-        costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
-        industry_growth_cagr="data/demand/industry_growth_cagr.csv",
+        industrial_database=PYPSAEARTH_DIR + "data/industrial_database.csv",
+        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        industry_growth_cagr=PYPSAEARTH_DIR + "data/demand/industry_growth_cagr.csv",
     output:
-        industrial_energy_demand_per_node="resources/"
+        industrial_energy_demand_per_node=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/industrial_energy_demand_per_node_elec_s{simpl}_{clusters}_{planning_horizons}_{demand}.csv",
     threads: 1
@@ -1958,19 +1961,19 @@ rule build_existing_heating_distribution:
         sector=config["sector"],
         existing_capacities=config["existing_capacities"],
     input:
-        existing_heating="data/existing_infrastructure/existing_heating_raw.csv",
-        clustered_pop_layout="resources/"
+        existing_heating=PYPSAEARTH_DIR + "data/existing_infrastructure/existing_heating_raw.csv",
+        clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        clustered_pop_energy_layout="resources/"
+        clustered_pop_energy_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/nodal_energy_heat_totals_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
         #"resources/population_shares/pop_weighted_energy_totals_s{simpl}_{clusters}.csv",
-        district_heat_share="resources/"
+        district_heat_share=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "demand/heat/district_heat_share_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
     output:
-        existing_heating_distribution="resources/"
+        existing_heating_distribution=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "heating/existing_heating_distribution_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
     threads: 1
@@ -1997,22 +2000,22 @@ if config["foresight"] == "myopic":
         input:
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
-            powerplants="resources/" + RDIR + "powerplants.csv",
-            busmap_s="resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
-            busmap="resources/"
+            powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
+            busmap_s=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
+            busmap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
-            clustered_pop_layout="resources/"
+            clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-            costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
-            cop_soil_total="resources/"
+            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            cop_soil_total=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-            cop_air_total="resources/"
+            cop_air_total=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "cops/cop_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-            existing_heating_distribution="resources/"
+            existing_heating_distribution=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "heating/existing_heating_distribution_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
         output:
@@ -2037,7 +2040,7 @@ if config["foresight"] == "myopic":
 
     def input_profile_tech_brownfield(w):
         return {
-            f"profile_{tech}": f"resources/"
+            f"profile_{tech}": PYPSAEARTH_DIR + f"resources/"
             + RDIR
             + "renewable_profiles/profile_{tech}.nc"
             for tech in config["electricity"]["renewable_carriers"]
@@ -2068,18 +2071,18 @@ if config["foresight"] == "myopic":
             carriers=config["electricity"]["renewable_carriers"],
         input:
             # unpack(input_profile_tech_brownfield),
-            simplify_busmap="resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
-            cluster_busmap="resources/"
+            simplify_busmap=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
+            cluster_busmap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
             network_p=solved_previous_horizon,  #solved network at previous time step
-            costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
-            cop_soil_total="resources/"
+            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            cop_soil_total=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-            cop_air_total="resources/"
+            cop_air_total=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "cops/cop_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
         output:
@@ -2111,10 +2114,10 @@ if config["foresight"] == "myopic":
             ),
             augmented_line_connection=config["augmented_line_connection"],
         input:
-            overrides=BASE_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             network=RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
-            costs="resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
         output:
             network=RESDIR

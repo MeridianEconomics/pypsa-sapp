@@ -37,6 +37,9 @@ from shapely.ops import unary_union
 from shapely.validation import make_valid
 from tqdm import tqdm
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 logger = create_logger(__name__)
 
 
@@ -87,7 +90,7 @@ def download_GADM(country_code, update=False, out_logging=False):
     GADM_url = f"https://geodata.ucdavis.edu/gadm/gadm4.1/gpkg/{GADM_filename}.gpkg"
 
     GADM_inputfile_gpkg = os.path.join(
-        BASE_DIR,
+        PYPSAEARTH_DIR,
         "data",
         "gadm",
         GADM_filename,
@@ -160,7 +163,7 @@ def filter_gadm(
     # debug output to file
     if output_nonstd_to_csv and not geodf_non_std.empty:
         geodf_non_std.to_csv(
-            f"resources/non_standard_gadm{layer}_{cc}_raw.csv", index=False
+            PYPSAEARTH_DIR + f"resources/non_standard_gadm{layer}_{cc}_raw.csv", index=False
         )
 
     return geodf
@@ -184,7 +187,6 @@ def get_GADM_layer(
         List of the countries
     layer_id : int
         Layer to consider in the format GID_{layer_id}.
-        When the requested layer_id is greater than the last available layer, then the last layer is selected.
         When a negative value is requested, then, the last layer is requested
     """
     # initialization of the geoDataFrame
@@ -201,8 +203,8 @@ def get_GADM_layer(
         list_layers = fiona.listlayers(file_gpkg)
 
         # get layer name
-        if (cur_layer_id < 0) or (cur_layer_id >= len(list_layers)):
-            # when layer id is negative or larger than the number of layers, select the last layer
+        if cur_layer_id < 0:
+            # when layer id is negative, select the last layer
             cur_layer_id = len(list_layers) - 1
 
         # read gpkg file
@@ -306,7 +308,7 @@ def country_cover(country_shapes, eez_shapes=None, out_logging=False, distance=0
     return africa_shape
 
 
-def load_EEZ(countries_codes, geo_crs, EEZ_gpkg="./data/eez/eez_v11.gpkg"):
+def load_EEZ(countries_codes, geo_crs, EEZ_gpkg=PYPSAEARTH_DIR+"data/eez/eez_v11.gpkg"):
     """
     Function to load the database of the Exclusive Economic Zones.
 
@@ -479,7 +481,7 @@ def download_WorldPop_standard(
         ]
 
     WorldPop_inputfile = os.path.join(
-        BASE_DIR, "data", "WorldPop", WorldPop_filename
+        PYPSAEARTH_DIR, "data", "WorldPop", WorldPop_filename
     )  # Input filepath tif
 
     if not os.path.exists(WorldPop_inputfile) or update is True:
@@ -533,7 +535,7 @@ def download_WorldPop_API(
     WorldPop_filename = f"{two_2_three_digits_country(country_code).lower()}_ppp_{year}_UNadj_constrained.tif"
     # Request to get the file
     WorldPop_inputfile = os.path.join(
-        BASE_DIR, "data", "WorldPop", WorldPop_filename
+        PYPSAEARTH_DIR, "data", "WorldPop", WorldPop_filename
     )  # Input filepath tif
     os.makedirs(os.path.dirname(WorldPop_inputfile), exist_ok=True)
     year_api = int(str(year)[2:])
@@ -570,10 +572,10 @@ def convert_GDP(name_file_nc, year=2015, out_logging=False):
     name_file_tif = name_file_nc[:-2] + "tif"
 
     # path of the nc file
-    GDP_nc = os.path.join(BASE_DIR, "data", "GDP", name_file_nc)  # Input filepath nc
+    GDP_nc = os.path.join(PYPSAEARTH_DIR, "data", "GDP", name_file_nc)  # Input filepath nc
 
     # path of the tif file
-    GDP_tif = os.path.join(BASE_DIR, "data", "GDP", name_file_tif)  # Input filepath nc
+    GDP_tif = os.path.join(PYPSAEARTH_DIR, "data", "GDP", name_file_tif)  # Input filepath nc
 
     # Check if file exists, otherwise throw exception
     if not os.path.exists(GDP_nc):
@@ -616,7 +618,7 @@ def load_GDP(
 
     # path of the nc file
     name_file_tif = name_file_nc[:-2] + "tif"
-    GDP_tif = os.path.join(BASE_DIR, "data", "GDP", name_file_tif)  # Input filepath tif
+    GDP_tif = os.path.join(PYPSAEARTH_DIR, "data", "GDP", name_file_tif)  # Input filepath tif
 
     if update | (not os.path.exists(GDP_tif)):
         if out_logging:

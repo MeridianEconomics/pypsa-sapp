@@ -72,6 +72,9 @@ idx = pd.IndexSlice
 
 logger = create_logger(__name__)
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 
 def download_emission_data():
     """
@@ -85,13 +88,13 @@ def download_emission_data():
     try:
         url = "https://jeodpp.jrc.ec.europa.eu/ftp/jrc-opendata/EDGAR/datasets/v60_GHG/CO2_excl_short-cycle_org_C/v60_GHG_CO2_excl_short-cycle_org_C_1970_2018.zip"
         with requests.get(url) as rq:
-            with open(os.path.join(BASE_DIR, "data/co2.zip"), "wb") as file:
+            with open(os.path.join(PYPSAEARTH_DIR, "data/co2.zip"), "wb") as file:
                 file.write(rq.content)
-        file_path = os.path.join(BASE_DIR, "data/co2.zip")
+        file_path = os.path.join(PYPSAEARTH_DIR, "data/co2.zip")
         with ZipFile(file_path, "r") as zipObj:
             zipObj.extract(
                 "v60_CO2_excl_short-cycle_org_C_1970_2018.xls",
-                os.path.join(BASE_DIR, "data"),
+                os.path.join(PYPSAEARTH_DIR, "data"),
             )
         os.remove(file_path)
         return "v60_CO2_excl_short-cycle_org_C_1970_2018.xls"
@@ -120,7 +123,7 @@ def emission_extractor(filename, emission_year, country_names):
     """
 
     # data reading process
-    datapath = os.path.join(BASE_DIR, "data", filename)
+    datapath = os.path.join(PYPSAEARTH_DIR, "data", filename)
     df = pd.read_excel(datapath, sheet_name="v6.0_EM_CO2_fossil_IPCC1996", skiprows=8)
     df.columns = df.iloc[0]
     df = df.set_index("Country_code_A3")

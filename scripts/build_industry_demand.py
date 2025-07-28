@@ -17,6 +17,9 @@ from _helpers import BASE_DIR, mock_snakemake, read_csv_nafix
 
 _logger = logging.getLogger(__name__)
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 
 def calculate_end_values(df):
     return (1 + df) ** no_years
@@ -70,7 +73,7 @@ if __name__ == "__main__":
 
         industry_demand = pd.read_csv(
             os.path.join(
-                BASE_DIR,
+                PYPSAEARTH_DIR,
                 "data/custom/industry_demand_{0}_{1}.csv".format(
                     snakemake.wildcards["demand"],
                     snakemake.wildcards["planning_horizons"],
@@ -211,7 +214,7 @@ if __name__ == "__main__":
 
         aluminium_year = snakemake.params.aluminium_year
         AL = read_csv_nafix(
-            os.path.join(BASE_DIR, "data/AL_production.csv"), index_col=0
+            os.path.join(PYPSAEARTH_DIR, "data/AL_production.csv"), index_col=0
         )
         # Filter data for the given year and countries
         AL_prod_tom = AL.query("Year == @aluminium_year and index in @countries_geo")[

@@ -12,6 +12,9 @@ import numpy as np
 import pandas as pd
 from _helpers import BASE_DIR
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 # from _helpers import configure_logging
 
 
@@ -137,7 +140,7 @@ if __name__ == "__main__":
     ports.to_csv(snakemake.output[0], sep=",", encoding="utf-8", header="true")
 
     if snakemake.params.custom_export:
-        custom_export_path = Path(BASE_DIR).joinpath(
+        custom_export_path = Path(PYPSAEARTH_DIR).joinpath(
             "data", "custom", "export_ports.csv"
         )
         shutil.copy(custom_export_path, snakemake.output[1])

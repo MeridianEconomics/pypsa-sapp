@@ -9,6 +9,10 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from _helpers import BASE_DIR
+import os
+
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
 
 # from _helpers import configure_logging
 
@@ -95,7 +99,7 @@ if __name__ == "__main__":
     # country_list = country_list_to_geofk(snakemake.config["countries"])'
 
     if snakemake.params.airport_custom_data:
-        custom_airports = Path(BASE_DIR).joinpath("data", "custom", "airports.csv")
+        custom_airports = Path(PYPSAEARTH_DIR).joinpath("data", "custom", "airports.csv")
         shutil.copy(custom_airports, snakemake.output[0])
     else:
         # Prepare downloaded data

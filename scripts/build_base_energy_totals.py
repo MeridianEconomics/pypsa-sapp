@@ -21,6 +21,9 @@ import py7zr
 import requests
 from _helpers import BASE_DIR, aggregate_fuels, get_conv_factors
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 _logger = logging.getLogger(__name__)
 
 pd.options.mode.chained_assignment = None
@@ -375,7 +378,7 @@ if __name__ == "__main__":
     if snakemake.params.update_data:
         # Delete and existing files to avoid duplication and double counting
 
-        files = glob.glob(os.path.join(BASE_DIR, "data/demand/unsd/data/*.txt"))
+        files = glob.glob(os.path.join(PYPSAEARTH_DIR, "data/demand/unsd/data/*.txt"))
         for f in files:
             os.remove(f)
 
@@ -385,13 +388,13 @@ if __name__ == "__main__":
 
             with urlopen(zipurl) as zipresp:
                 with ZipFile(BytesIO(zipresp.read())) as zfile:
-                    zfile.extractall(os.path.join(BASE_DIR, "data/demand/unsd/data"))
+                    zfile.extractall(os.path.join(PYPSAEARTH_DIR, "data/demand/unsd/data"))
 
-                    path = os.path.join(BASE_DIR, "data/demand/unsd/data")
+                    path = os.path.join(PYPSAEARTH_DIR, "data/demand/unsd/data")
 
     # Get the files from the path provided in the OP
     all_files = list(
-        Path(os.path.join(BASE_DIR, "data/demand/unsd/data")).glob("*.txt")
+        Path(os.path.join(PYPSAEARTH_DIR, "data/demand/unsd/data")).glob("*.txt")
     )
 
     # Create a dataframe from all downloaded files
@@ -436,7 +439,7 @@ if __name__ == "__main__":
 
     # Create an empty dataframe for energy_totals_base
     energy_totals_cols = pd.read_csv(
-        os.path.join(BASE_DIR, "data/energy_totals_DF_2030.csv")
+        os.path.join(PYPSAEARTH_DIR, "data/energy_totals_DF_2030.csv")
     ).columns
     energy_totals_base = pd.DataFrame(columns=energy_totals_cols, index=countries)
 

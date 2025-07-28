@@ -17,6 +17,9 @@ import pandas as pd
 from _helpers import locate_bus, three_2_two_digits_country
 from shapely.geometry import Point
 
+# Environment variables
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 logger = logging.getLogger(__name__)
 gpd_version = StrictVersion(gpd.__version__)
 
@@ -124,7 +127,7 @@ if __name__ == "__main__":
             "Using custom industry database from 'data/custom/industrial_database.csv' instead of default"
         )
         geo_locs = pd.read_csv(
-            "data/custom/industrial_database.csv",
+            PYPSAEARTH_DIR + "data/custom/industrial_database.csv",
             sep=",",
             header=0,
             keep_default_na=False,  # , index_col=0
