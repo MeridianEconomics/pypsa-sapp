@@ -4,6 +4,20 @@ SPDX-FileCopyrightText:  PyPSA-Earth and PyPSA-Eur Authors
 SPDX-License-Identifier: AGPL-3.0-or-later
 -->
 
+# PyPSA-SAPP
+
+The PyPSA-SAPP model is an extension of PyPSA-Earth developed for the Southern African Power Pool (SAPP) by Meridian Economics. This model is open-source and is currently in the development stage for more accurate information on the SAPP. If you would like to collaborate, please contact Janet.cronje@meridianeconomics.co.za
+
+## Setup difference from PyPSA-Earth
+
+If your resources and data for PyPSA-Earth sit in another directory and you would like to use this folder for PyPSA-SAPP, a PYPSAEARTH_DIR can be set in you .bashrc. The default for this folder is set to this repository. If you would like to add a PYPSAEARTH_DIR in your .bashrc, an example entry can be seen below
+
+export PYPSAEARTH_DIR="/insert/path/to/data/"
+
+## Key differences from PyPSA-Earth
+
+Currently, this model is at an initial investigation stage. Default config files for the SAPP model can be found in the SAPP folder. The current scenarios reflect a brownfield 2030 scenario as well as a 2040 capacity expansion scenario.
+
 # PyPSA-Earth. A Flexible Python-based Open Optimisation Model to Study Energy System Futures around the World.
 
 <p align="left">

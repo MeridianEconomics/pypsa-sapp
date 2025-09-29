@@ -59,7 +59,10 @@ SDIR = config["summary_dir"].strip("/") + f"/{SECDIR}"
 RESDIR = config["results_dir"].strip("/") + f"/{SECDIR}"
 
 # Environment variables
-PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+try:
+    PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+except:
+    PYPSAEARTH_DIR = workflow.basedir
 
 load_data_paths = get_load_paths_gegis(PYPSAEARTH_DIR + "data", config)
 
