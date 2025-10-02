@@ -477,7 +477,7 @@ rule build_renewable_profiles:
     input:
         natura=PYPSAEARTH_DIR + "resources/" + RDIR + "natura.tiff",
         copernicus=PYPSAEARTH_DIR + "data/copernicus/PROBAV_LC100_global_v3.0.1_2019-nrt_Discrete-Classification-map_EPSG-4326.tif",
-        gebco=PYPSAEARTH_DIR + "data/gebco/GEBCO_2021_TID.nc",
+        gebco=PYPSAEARTH_DIR + "data/gebco/GEBCO_2025_sub_ice.nc",
         country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
         offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
         hydro_capacities=PYPSAEARTH_DIR + "data/hydro_capacities.csv",
@@ -626,148 +626,94 @@ rule simplify_network:
         "scripts/simplify_network.py"
 
 
-if config["augmented_line_connection"].get("add_to_snakefile", False) == True:
-
-    rule cluster_network:
-        params:
-            aggregation_strategies=config["cluster_options"]["aggregation_strategies"],
-            build_shape_options=config["build_shape_options"],
-            electricity=config["electricity"],
-            costs=config["costs"],
-            length_factor=config["lines"]["length_factor"],
-            renewable=config["renewable"],
-            geo_crs=config["crs"]["geo_crs"],
-            countries=config["countries"],
-            cluster_options=config["cluster_options"],
-            focus_weights=config.get("focus_weights", None),
-            #custom_busmap=config["enable"].get("custom_busmap", False)
-        input:
-            network="networks/" + RDIR + "elec_s{simpl}.nc",
-            country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
-            regions_onshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_onshore_elec_s{simpl}.geojson",
-            regions_offshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_offshore_elec_s{simpl}.geojson",
-            #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
-            #using this line instead of the following will test updated gadm shapes for MA.
-            #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
-            #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-            gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
-            # busmap=ancient('resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv'),
-            # custom_busmap=("data/custom_busmap_elec_s{simpl}_{clusters}.csv"
-            #                if config["enable"].get("custom_busmap", False) else []),
-            tech_costs=COSTS,
-        output:
-            network="networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
-            regions_onshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-            regions_offshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
-            busmap=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
-            linemap=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/linemap_elec_s{simpl}_{clusters}.csv",
-        log:
-            "logs/" + RDIR + "cluster_network/elec_s{simpl}_{clusters}.log",
-        benchmark:
-            "benchmarks/" + RDIR + "cluster_network/elec_s{simpl}_{clusters}"
-        threads: 1
-        resources:
-            mem_mb=3000,
-        script:
-            "scripts/cluster_network.py"
-
-    rule augmented_line_connections:
-        params:
-            lines=config["lines"],
-            augmented_line_connection=config["augmented_line_connection"],
-            hvdc_as_lines=config["electricity"]["hvdc_as_lines"],
-            electricity=config["electricity"],
-            costs=config["costs"],
-        input:
-            tech_costs=COSTS,
-            network="networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
-            regions_onshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-            regions_offshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
-        output:
-            network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
-        log:
-            "logs/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}.log",
-        benchmark:
-            "benchmarks/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}"
-        threads: 1
-        resources:
-            mem_mb=3000,
-        script:
-            "scripts/augmented_line_connections.py"
+rule cluster_network:
+    params:
+        aggregation_strategies=config["cluster_options"]["aggregation_strategies"],
+        build_shape_options=config["build_shape_options"],
+        electricity=config["electricity"],
+        costs=config["costs"],
+        length_factor=config["lines"]["length_factor"],
+        renewable=config["renewable"],
+        crs=config["crs"],
+        countries=config["countries"],
+        cluster_options=config["cluster_options"],
+        focus_weights=config.get("focus_weights", None),
+        custom_busmap=config["enable"].get("custom_busmap", False),
+        subregion=config["subregion"],
+    input:
+        network="networks/" + RDIR + "elec_s{simpl}.nc",
+        country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "bus_regions/regions_onshore_elec_s{simpl}.geojson",
+        regions_offshore=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "bus_regions/regions_offshore_elec_s{simpl}.geojson",
+        #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
+        #using this line instead of the following will test updated gadm shapes for MA.
+        #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
+        #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
+        gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
+        # busmap=ancient('resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv'),
+        custom_busmap=(
+            PYPSAEARTH_DIR + "data/custom_busmap_elec_s{simpl}_{clusters}.csv"
+            if config["enable"].get("custom_busmap", False)
+            else []
+        ),
+        tech_costs=COSTS,
+        subregion_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/subregion_shapes.geojson",
+    output:
+        network=branch(
+            config["augmented_line_connection"].get("add_to_snakefile", False) == True,
+            "networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
+            "networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
+        ),
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        regions_offshore=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
+        busmap=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
+        linemap=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/linemap_elec_s{simpl}_{clusters}.csv",
+    log:
+        "logs/" + RDIR + "cluster_network/elec_s{simpl}_{clusters}.log",
+    benchmark:
+        "benchmarks/" + RDIR + "cluster_network/elec_s{simpl}_{clusters}"
+    threads: 1
+    resources:
+        mem_mb=3000,
+    script:
+        "scripts/cluster_network.py"
 
 
-if config["augmented_line_connection"].get("add_to_snakefile", False) == False:
-
-    rule cluster_network:
-        params:
-            aggregation_strategies=config["cluster_options"]["aggregation_strategies"],
-            build_shape_options=config["build_shape_options"],
-            electricity=config["electricity"],
-            costs=config["costs"],
-            length_factor=config["lines"]["length_factor"],
-            renewable=config["renewable"],
-            geo_crs=config["crs"]["geo_crs"],
-            countries=config["countries"],
-            gadm_layer_id=config["build_shape_options"]["gadm_layer_id"],
-            cluster_options=config["cluster_options"],
-            focus_weights=config.get("focus_weights", None),
-        input:
-            network="networks/" + RDIR + "elec_s{simpl}.nc",
-            country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
-            regions_onshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_onshore_elec_s{simpl}.geojson",
-            regions_offshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_offshore_elec_s{simpl}.geojson",
-            #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
-            #using this line instead of the following will test updated gadm shapes for MA.
-            #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
-            #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
-            gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
-            # busmap=ancient('resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv'),
-            # custom_busmap=("data/custom_busmap_elec_s{simpl}_{clusters}.csv"
-            #                if config["enable"].get("custom_busmap", False) else []),
-            tech_costs=COSTS,
-        output:
-            network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
-            regions_onshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-            regions_offshore=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
-            busmap=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
-            linemap=PYPSAEARTH_DIR + "resources/"
-            + RDIR
-            + "bus_regions/linemap_elec_s{simpl}_{clusters}.csv",
-        log:
-            "logs/" + RDIR + "cluster_network/elec_s{simpl}_{clusters}.log",
-        benchmark:
-            "benchmarks/" + RDIR + "cluster_network/elec_s{simpl}_{clusters}"
-        threads: 1
-        resources:
-            mem_mb=3000,
-        script:
-            "scripts/cluster_network.py"
+rule augmented_line_connections:
+    params:
+        lines=config["lines"],
+        augmented_line_connection=config["augmented_line_connection"],
+        hvdc_as_lines=config["electricity"]["hvdc_as_lines"],
+        electricity=config["electricity"],
+        costs=config["costs"],
+    input:
+        tech_costs=COSTS,
+        network="networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
+        regions_onshore=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
+        regions_offshore=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
+    output:
+        network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
+    log:
+        "logs/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}.log",
+    benchmark:
+        "benchmarks/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}"
+    threads: 1
+    resources:
+        mem_mb=3000,
+    script:
+        "scripts/augmented_line_connections.py"
 
 
 rule add_extra_components:
@@ -1155,58 +1101,43 @@ rule prepare_sector_network:
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_presec.nc",
         costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
         h2_cavern=PYPSAEARTH_DIR + "data/hydrogen_salt_cavern_potentials.csv",
-        nodal_energy_totals=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/heat/nodal_energy_heat_totals_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        transport=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/transport_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        avail_profile=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "pattern_profiles/avail_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        dsm_profile=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "pattern_profiles/dsm_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        nodal_transport_data=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/nodal_transport_data_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+        nodal_energy_totals=branch(
+            sector_enable["rail_transport"] or sector_enable["agriculture"],
+            PYPSAEARTH_DIR + "resources/"
+            + SECDIR
+            + "demand/heat/nodal_energy_heat_totals_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+        ),
         overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-        industrial_demand=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/industrial_energy_demand_per_node_elec_s{simpl}_{clusters}_{planning_horizons}_{demand}.csv",
+        industrial_demand=branch(
+            sector_enable["industry"],
+            PYPSAEARTH_DIR + "resources/"
+            + SECDIR
+            + "demand/industrial_energy_demand_per_node_elec_s{simpl}_{clusters}_{planning_horizons}_{demand}.csv",
+        ),
         energy_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "energy_totals_{demand}_{planning_horizons}.csv",
-        airports=PYPSAEARTH_DIR + "resources/" + SECDIR + "airports.csv",
-        ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "ports.csv",
-        heat_demand=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/heat/heat_demand_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        ashp_cop=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/heat/ashp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        gshp_cop=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/heat/gshp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        solar_thermal=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/heat/solar_thermal_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-        district_heat_share=PYPSAEARTH_DIR + "resources/"
-        + SECDIR
-        + "demand/heat/district_heat_share_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+        airports=branch(
+            sector_enable["aviation"],
+            PYPSAEARTH_DIR + "resources/" + SECDIR + "airports.csv",
+        ),
+        ports=branch(sector_enable["shipping"], PYPSAEARTH_DIR + "resources/" + SECDIR + "ports.csv"),
         biomass_transport_costs=PYPSAEARTH_DIR + "data/temp_hard_coded/biomass_transport_costs.csv",
         shapes_path=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        pipelines=(
-            PYPSAEARTH_DIR + "data/custom/pipelines.csv"
-            if config["custom_data"]["gas_network"]
-            else PYPSAEARTH_DIR + "resources/"
-            + SECDIR
-            + "gas_networks/gas_network_elec_s{simpl}_{clusters}.csv"
+        pipelines=branch(
+            config["sector"]["hydrogen"]["network"],
+            branch(
+                config["custom_data"]["gas_network"],
+                PYPSAEARTH_DIR + "data/custom/pipelines.csv",
+                PYPSAEARTH_DIR + "resources/"
+                + SECDIR
+                + "gas_networks/gas_network_elec_s{simpl}_{clusters}.csv",
+            ),
         ),
     output:
         RESDIR
@@ -2080,19 +2011,10 @@ if config["foresight"] == "myopic":
             busmap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
-            clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
-            + SECDIR
-            + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
+            # clustered_pop_layout="resources/"
+            # + SECDIR
+            # + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
-            cop_soil_total=PYPSAEARTH_DIR + "resources/"
-            + SECDIR
-            + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-            cop_air_total=PYPSAEARTH_DIR + "resources/"
-            + SECDIR
-            + "cops/cop_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-            existing_heating_distribution=PYPSAEARTH_DIR + "resources/"
-            + SECDIR
-            + "heating/existing_heating_distribution_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
         output:
             RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
