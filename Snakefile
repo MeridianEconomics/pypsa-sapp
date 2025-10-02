@@ -3,10 +3,12 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 
 import sys
+import os
+import warnings
+import pathlib
 
 sys.path.append("./scripts")
 
-from os.path import normpath, exists, isdir
 from shutil import copyfile, move
 
 from snakemake.remote.HTTP import RemoteProvider as HTTPRemoteProvider
@@ -17,6 +19,7 @@ from _helpers import (
     check_config_version,
     copy_default_files,
     BASE_DIR,
+    branch,  # Remove if Snakemake >= 8.3.0
 )
 from build_demand_profiles import get_load_paths_gegis
 from retrieve_databundle_light import (
@@ -403,14 +406,28 @@ if not config["enable"].get("build_natura_raster", False):
             shutil.copyfile(input[0], output[0])
 
 
+country_data = config["costs"].get("country_specific_data", "")
+countries = config.get("countries", [])
+
+if country_data and countries == [country_data]:
+    cost_directory = f"{country_data}/"
+elif country_data:
+    cost_directory = f"{country_data}/"
+    warnings.warn(
+        f"'country_specific_data' is set to '{country_data}', but 'countries' is {countries}. Make sure the '{country_data}' directory exists and that this is intentional."
+    )
+else:
+    cost_directory = ""
+
+
 if config["enable"].get("retrieve_cost_data", True):
 
     rule retrieve_cost_data:
         params:
-            version=config["costs"]["version"],
+            version=config["costs"]["technology_data_version"],
         input:
             HTTP.remote(
-                f"raw.githubusercontent.com/PyPSA/technology-data/{config['costs']['version']}/outputs/"
+                f"raw.githubusercontent.com/PyPSA/technology-data/{config['costs']['technology_data_version']}/outputs/{cost_directory}"
                 + "costs_{year}.csv",
                 keep_local=True,
             ),
@@ -830,13 +847,14 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == False:
         params:
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
+            policy_config=config["policy_config"],
         input:
             overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         output:
             "results/" + RDIR + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         log:
-            solver=normpath(
+            solver=os.path.normpath(
                 "logs/"
                 + RDIR
                 + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_solver.log"
@@ -897,6 +915,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == True:
         params:
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
+            policy_config=config["policy_config"],
         input:
             overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             network="networks/"
@@ -907,7 +926,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == True:
             + RDIR
             + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{unc}.nc",
         log:
-            solver=normpath(
+            solver=os.path.normpath(
                 "logs/"
                 + RDIR
                 + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{unc}_solver.log"
@@ -1079,6 +1098,42 @@ if not config["custom_data"]["gas_network"]:
             "scripts/prepare_gas_network.py"
 
 
+sector_enable = config["sector"]["enable"]
+
+TRANSPORT = {
+    "transport": "resources/"
+    + SECDIR
+    + "demand/transport_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    "avail_profile": "resources/"
+    + SECDIR
+    + "pattern_profiles/avail_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    "dsm_profile": "resources/"
+    + SECDIR
+    + "pattern_profiles/dsm_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    "nodal_transport_data": "resources/"
+    + SECDIR
+    + "demand/nodal_transport_data_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+}
+
+HEAT = {
+    "heat_demand": "resources/"
+    + SECDIR
+    + "demand/heat/heat_demand_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    "ashp_cop": "resources/"
+    + SECDIR
+    + "demand/heat/ashp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    "gshp_cop": "resources/"
+    + SECDIR
+    + "demand/heat/gshp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    "solar_thermal": "resources/"
+    + SECDIR
+    + "demand/heat/solar_thermal_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    "district_heat_share": "resources/"
+    + SECDIR
+    + "demand/heat/district_heat_share_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+}
+
+
 rule prepare_sector_network:
     params:
         costs=config["costs"],
@@ -1092,7 +1147,10 @@ rule prepare_sector_network:
         sector_options=config["sector"],
         foresight=config["foresight"],
         water_costs=config["custom_data"]["water_costs"],
+        co2_budget=config["co2_budget"],
     input:
+        **branch(sector_enable["land_transport"], TRANSPORT),
+        **branch(sector_enable["heat"], HEAT),
         network=RESDIR
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_presec.nc",
         costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
@@ -1650,6 +1708,7 @@ if config["foresight"] == "overnight":
         params:
             solving=config["solving"],
             augmented_line_connection=config["augmented_line_connection"],
+            policy_config=config["policy_config"],
         input:
             overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             # network=RESDIR
@@ -1994,6 +2053,18 @@ rule build_existing_heating_distribution:
 
 if config["foresight"] == "myopic":
 
+    HEAT_BASEYEAR = {
+        "cop_soil_total": "resources/"
+        + SECDIR
+        + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
+        "cop_air_total": "resources/"
+        + SECDIR
+        + "cops/cop_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
+        "existing_heating_distribution": "resources/"
+        + SECDIR
+        + "heating/existing_heating_distribution_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
+    }
+
     rule add_existing_baseyear:
         params:
             baseyear=config["scenario"]["planning_horizons"][0],
@@ -2001,6 +2072,7 @@ if config["foresight"] == "myopic":
             existing_capacities=config["existing_capacities"],
             costs=config["costs"],
         input:
+            **branch(sector_enable["heat"], HEAT_BASEYEAR),
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
             powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
@@ -2116,6 +2188,7 @@ if config["foresight"] == "myopic":
                 "co2_sequestration_potential", 200
             ),
             augmented_line_connection=config["augmented_line_connection"],
+            policy_config=config["policy_config"],
         input:
             overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
             network=RESDIR
