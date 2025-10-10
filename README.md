@@ -14,6 +14,10 @@ If your resources and data for PyPSA-Earth sit in another directory and you woul
 
 export PYPSAEARTH_DIR="/insert/path/to/data/"
 
+To run the default config files, there are two options:
+- Copy the config file to the main directory and rename it config.yaml. In your terminal then run "snakemake -j10 solve_all_networks"
+- In your teminal run "snakemake -j10 solve_all_networks --configfile 'SAPP/Configs/_chosen config file name_.yaml'"
+
 ## Key differences from PyPSA-Earth
 
 Currently, this model is at an initial investigation stage. Default config files for the SAPP model can be found in the SAPP folder. The current scenarios reflect a brownfield 2030 scenario as well as a 2040 capacity expansion scenario.
