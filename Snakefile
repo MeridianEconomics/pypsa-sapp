@@ -54,18 +54,18 @@ config["scenario"]["unc"] = [
 ]
 
 
-run = config.get("run", {})
-RDIR = run["name"] + "/" if run.get("name") else ""
-CDIR = RDIR if not run.get("shared_cutouts") else ""
-SECDIR = run["sector_name"] + "/" if run.get("sector_name") else ""
-SDIR = config["summary_dir"].strip("/") + f"/{SECDIR}"
-RESDIR = config["results_dir"].strip("/") + f"/{SECDIR}"
-
 # Environment variables
 try:
     PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
 except:
     PYPSAEARTH_DIR = workflow.basedir
+
+run = config.get("run", {})
+RDIR = run["name"] + "/" if run.get("name") else ""
+CDIR = RDIR if not run.get("shared_cutouts") else ""
+SECDIR = run["sector_name"] + "/" if run.get("sector_name") else ""
+SDIR = PYPSAEARTH_DIR + config["summary_dir"].strip("/") + f"/{SECDIR}"
+RESDIR = PYPSAEARTH_DIR + config["results_dir"].strip("/") + f"/{SECDIR}"
 
 load_data_paths = get_load_paths_gegis(PYPSAEARTH_DIR + "data", config)
 
@@ -795,7 +795,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == False:
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         output:
             "results/" + RDIR + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
@@ -863,7 +863,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == True:
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network="networks/"
             + RDIR
             + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{unc}.nc",
@@ -1047,34 +1047,34 @@ if not config["custom_data"]["gas_network"]:
 sector_enable = config["sector"]["enable"]
 
 TRANSPORT = {
-    "transport": "resources/"
+    "transport": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "demand/transport_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-    "avail_profile": "resources/"
+    "avail_profile": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "pattern_profiles/avail_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-    "dsm_profile": "resources/"
+    "dsm_profile": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "pattern_profiles/dsm_profile_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-    "nodal_transport_data": "resources/"
+    "nodal_transport_data": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "demand/nodal_transport_data_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
 }
 
 HEAT = {
-    "heat_demand": "resources/"
+    "heat_demand": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "demand/heat/heat_demand_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-    "ashp_cop": "resources/"
+    "ashp_cop": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "demand/heat/ashp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-    "gshp_cop": "resources/"
+    "gshp_cop": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "demand/heat/gshp_cop_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-    "solar_thermal": "resources/"
+    "solar_thermal": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "demand/heat/solar_thermal_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
-    "district_heat_share": "resources/"
+    "district_heat_share": PYPSAEARTH_DIR + "resources/"
     + SECDIR
     + "demand/heat/district_heat_share_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
 }
@@ -1275,7 +1275,7 @@ rule build_cop_profiles:
         temp_air_total=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        temp_air_rural="resources/"
+        temp_air_rural=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "temperatures/temp_air_rural_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
         temp_air_urban=PYPSAEARTH_DIR + "resources/"
@@ -1641,7 +1641,7 @@ if config["foresight"] == "overnight":
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             # network=RESDIR
             # + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}.nc",
             network=RESDIR
@@ -1985,13 +1985,13 @@ rule build_existing_heating_distribution:
 if config["foresight"] == "myopic":
 
     HEAT_BASEYEAR = {
-        "cop_soil_total": "resources/"
+        "cop_soil_total": PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        "cop_air_total": "resources/"
+        "cop_air_total": PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "cops/cop_air_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
-        "existing_heating_distribution": "resources/"
+        "existing_heating_distribution": PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "heating/existing_heating_distribution_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
     }
@@ -2112,7 +2112,7 @@ if config["foresight"] == "myopic":
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "/data/override_component_attrs",
+            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network=RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
