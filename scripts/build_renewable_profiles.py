@@ -489,7 +489,7 @@ if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_renewable_profiles", technology="offwind-dc")
+        snakemake = mock_snakemake("build_renewable_profiles", technology="onwind")
     configure_logging(snakemake)
 
     pgb.streams.wrap_stderr()
@@ -498,6 +498,7 @@ if __name__ == "__main__":
     nprocesses = int(snakemake.threads)
     noprogress = not snakemake.config["enable"]["progress_bar"]
     config = snakemake.params.renewable[snakemake.wildcards.technology]
+    shape_layer = snakemake.params.shape_layer
     resource = config["resource"]
     correction_factor = config.get("correction_factor", 1.0)
     p_nom_max_meth = config.get("potential", "conservative")
@@ -688,6 +689,36 @@ if __name__ == "__main__":
             buffer = config["max_shore_distance"]
             excluder.add_geometry(paths.country_shapes, buffer=buffer, invert=True)
 
+        if "custom_redz_raster" in config:
+            redz_folder = config['custom_redz_raster']['folder']
+            redz_file = config['custom_redz_raster']['file']
+            redz_layer = config['custom_redz_raster']['layer']
+            redz_invert = config['custom_redz_raster']['invert']
+
+            redz_path = PYPSAEARTH_DIR + redz_folder + '/' + redz_file
+            redz = gpd.read_file(redz_path, layer = redz_layer).to_crs("EPSG:4326")
+
+            excluder.add_geometry(redz, invert=redz_invert)
+
+        if snakemake.wildcards.technology == 'onwind' and 'gwa_correction' in config:
+            import rasterio
+            import rioxarray
+
+            correction_folder = config['gwa_correction']['folder']
+            correction_file = config['gwa_correction']['file']
+
+            correction_path = PYPSAEARTH_DIR + correction_folder + '/' + correction_file
+            gwa_data = rioxarray.open_rasterio(correction_path)
+            
+            ds=gwa_data.sel(band=1, x=slice(*cutout.extent[[0,1]]), y=slice(*cutout.extent[[3,2]]))
+            ds=ds.where(ds!=-999)
+            ds=atlite.gis.regrid(ds,cutout.data.x, cutout.data.y,resampling=rasterio.warp.Resampling.average)
+
+            bias_correction = ds/cutout.data.wnd100m.mean("time") 
+            bias_correction=bias_correction.fillna(1)
+            cutout.data.wnd100m.values=(bias_correction*cutout.data.wnd100m).transpose('time', 'y', 'x').values
+
+
         kwargs = dict(nprocesses=nprocesses, disable_progressbar=noprogress)
         if noprogress:
             logger.info("Calculate landuse availabilities...")
@@ -697,12 +728,18 @@ if __name__ == "__main__":
             duration = time.time() - start
             logger.info(f"Completed availability calculation ({duration:2.2f}s)")
         else:
-            # Hot fix for if excluder does not overlap with the regions - True for RSA offshore wind
             try:
                 availability = cutout.availabilitymatrix(regions, excluder, **kwargs)
             except:
-                logger.warning(f"Excluder does not overlap with the regions, for {snakemake.wildcards.technology}. Running with empty excluder.")
-                availability = cutout.availabilitymatrix(regions, excluder_empty, **kwargs)
+                try:
+                    logger.warning(f"Running with a single process for {snakemake.wildcards.technology}.")
+                    kwargs = dict(nprocesses=None, disable_progressbar=noprogress)
+                    availability = cutout.availabilitymatrix(regions, excluder, **kwargs)
+                except:
+                    kwargs = dict(nprocesses=nprocesses, disable_progressbar=noprogress)
+                    # Hot fix for if excluder does not overlap with the regions - True for RSA offshore wind
+                    logger.warning(f"Excluder does not overlap with the regions, for {snakemake.wildcards.technology}. Running with empty excluder.")
+                    availability = cutout.availabilitymatrix(regions, excluder_empty, **kwargs)
         area = cutout.grid.to_crs(area_crs).area / 1e6
         area = xr.DataArray(
             area.values.reshape(cutout.shape), [cutout.coords["y"], cutout.coords["x"]]
@@ -794,6 +831,11 @@ if __name__ == "__main__":
         if "clip_p_max_pu" in config:
             min_p_max_pu = config["clip_p_max_pu"]
             ds["profile"] = ds["profile"].where(ds["profile"] >= min_p_max_pu, 0)
+
+        if snakemake.wildcards.technology == 'solar':
+            ratio = config.get('dc_ac_ratio', 1)
+            dc_ac = ds['profile'] * ratio
+            ds['profile'] = dc_ac.where(dc_ac <= 1, 1)
 
         ds.to_netcdf(snakemake.output.profile)
 

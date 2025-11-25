@@ -20,7 +20,35 @@ To run the default config files, there are two options:
 
 ## Key differences from PyPSA-Earth
 
-Currently, this model is at an initial investigation stage. Default config files for the SAPP model can be found in the SAPP folder. The current scenarios reflect a brownfield 2030 scenario as well as a 2040 capacity expansion scenario.
+This model is still being improved but the following features have been implemented
+
+### Renewable Energy Profiles improvement
+
+- AC DC Ratio implemented for Solar PV
+- GWA correction added for Onwind to improve reflection of high resource wind speeds
+- Custom REDZ raster added to restrict Onwind and Solar PV development to specific, high resource, regions
+
+The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated model
+
+```yaml
+renewable:
+  onwind:
+    custom_redz_raster:
+      folder: resources/redz/sapp
+      file: sapp.gpkg
+      layer: wind
+      invert: True # If True, only include regions passed, if False, exclude the regions passed
+    gwa_correction: 
+      folder: resources/redz/era5_correction
+      file: SAPP_wind-speed_100m.tif      # Can be downloaded for individual countries from https://globalwindatlas.info/en/download/gis-files
+  solar:
+    dc_ac_ratio: 1.25
+    custom_redz_raster:
+      folder: resources/redz/sapp
+      file: sapp.gpkg
+      layer: solar
+      invert: True # If True, only include regions passed, if False, exclude the regions passed
+```
 
 # PyPSA-Earth. A Flexible Python-based Open Optimisation Model to Study Energy System Futures around the World.
 
