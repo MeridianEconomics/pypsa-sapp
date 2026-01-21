@@ -98,7 +98,7 @@ def get_gegis_regions(countries):
     return regions
 
 
-def get_load_paths_gegis(ssp_parentfolder, config):
+def get_load_paths_gegis(ssp_parentfolder, config, multi_horizon = False):
     """
     Create load paths for GEGIS outputs.
 
@@ -113,6 +113,8 @@ def get_load_paths_gegis(ssp_parentfolder, config):
     region_load = get_gegis_regions(countries)
     weather_year = config.get("load_options")["weather_year"]
     prediction_year = config.get("load_options")["prediction_year"]
+    if multi_horizon:
+        prediction_year = multi_horizon
     ssp = config.get("load_options")["ssp"]
 
     scenario_path = os.path.join(ssp_parentfolder, ssp)
@@ -324,6 +326,9 @@ if __name__ == "__main__":
     start_date = snakemake.params.snapshots["start"]
     end_date = snakemake.params.snapshots["end"]
     out_path = snakemake.output[0]
+    
+    if snakemake.params.multi_horizon:
+        load_paths = get_load_paths_gegis(snakemake.params.pypsaearth_dir + "data", snakemake.params.config, int(snakemake.wildcards.planning_horizons))
 
     build_demand_profiles(
         n,
