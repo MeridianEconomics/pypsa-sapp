@@ -57,9 +57,30 @@ In PyPSA-Earth, line transfer capacities are calculated using thermal limits. In
 The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated model
 
 ```yaml
+lines:
   limits: "St Clair" # ["thermal", "SIL", "St Clair"]
   default_frequency: 50.
 ```
+
+### Electricity only workflow for myopic foresight
+
+An electricity only workflow can be run using the rule 'solve_elec_networks_myopic' from the Snakefile. Therefore, the following command can be run in your terminal to run this workflow
+
+```bash
+snakemake --cores 16 solve_elec_networks_myopic
+```
+
+Note that the following modifications and additions to your config.yaml are required to run this workflow
+
+```yaml
+# change foresight to myopic
+foresight: myopic
+
+# add this line (preferably near the sector coupling section of the config)
+enable_sector_coupling: false
+```
+
+
 
 
 # PyPSA-Earth. A Flexible Python-based Open Optimisation Model to Study Energy System Futures around the World.
