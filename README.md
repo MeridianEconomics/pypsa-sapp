@@ -50,6 +50,18 @@ renewable:
       invert: True # If True, only include regions passed, if False, exclude the regions passed
 ```
 
+### Inter-region transfer capacities calculation using stability limits
+
+In PyPSA-Earth, line transfer capacities are calculated using thermal limits. In the SAPP region, very long 400 kV and 765 kV lines result in a significant overestimation of the capacities when thermal limits are used. Another method to calculate inter-region transfer capacities is using stability limits by utilising Surge Impedance Loading (SIL) in combination St Clair Curves to create a more accurate estimation of the line capacities
+
+The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated model
+
+```yaml
+  limits: "St Clair" # ["thermal", "SIL", "St Clair"]
+  default_frequency: 50.
+```
+
+
 # PyPSA-Earth. A Flexible Python-based Open Optimisation Model to Study Energy System Futures around the World.
 
 <p align="left">
