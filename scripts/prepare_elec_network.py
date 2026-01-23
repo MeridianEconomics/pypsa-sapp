@@ -38,47 +38,74 @@ PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
 logger = logging.getLogger(__name__)
 
 
-def attach_load_from_demand_profiles(n, demand_profiles_path):
-    """
-    Attach electricity demand to network from demand_profiles.csv.
+def attach_load_from_demand_profiles(
+    n,
+    demand_profiles_path,
+    busmap_bus0_to_bus_path,   # busmap_elec_s.csv (Bus0 -> Bus)
+    busmap_bus_to_zone_path,   # busmap_elec_s_10.csv (Bus -> gadm_subnetwork)
+    zone_col="gadm_subnetwork",
+):
 
-    Expects CSV with:
-      - index = timestamps (parseable to datetime)
-      - columns = bus names (e.g. AC bus names)
+    demand = pd.read_csv(demand_profiles_path, index_col=0, parse_dates=True)
+    demand.index = pd.to_datetime(demand.index, errors="coerce")
+    demand = demand[~demand.index.isna()].sort_index()
+    demand.columns = demand.columns.astype(str)
 
-    Creates Load components (one per bus column) and sets p_set time series.
-    """
-    demand_df = pd.read_csv(demand_profiles_path, index_col=0, parse_dates=True)
+    demand = demand.replace({",": ""}, regex=True)
+    demand = demand.apply(lambda s: pd.to_numeric(s, errors="coerce"))
+    demand = demand.dropna(axis=1, how="all")
 
-    # Align to network snapshots
-    demand_df = demand_df.reindex(pd.to_datetime(n.snapshots))
+    target = pd.DatetimeIndex(n.snapshots)
+    demand = demand.reindex(demand.index.union(target)).sort_index()
+    demand = demand.interpolate(method="time", limit_direction="both")
+    demand = demand.ffill().bfill()
+    demand = demand.reindex(target)
 
-    if demand_df.isna().any().any():
-        # If your profiles are fine, this should not happen; but it's safer to catch early
-        missing = demand_df.index[demand_df.isna().any(axis=1)]
+    # Bus0 -> Bus 
+    b0b = pd.read_csv(busmap_bus0_to_bus_path)
+    if b0b.shape[1] < 2:
+        raise ValueError(f"{busmap_bus0_to_bus_path} must have at least 2 columns (Bus0 -> Bus).")
+
+    b0b = b0b.iloc[:, :2].copy()
+    b0b.columns = ["Bus0", "Bus"]
+
+    b0b["Bus0"] = pd.to_numeric(b0b["Bus0"], errors="coerce").astype("Int64").astype(str)
+    b0b["Bus"]  = pd.to_numeric(b0b["Bus"],  errors="coerce").astype("Int64").astype(str)
+
+    bus0_to_bus = b0b.set_index("Bus0")["Bus"]
+
+    keep = [c for c in demand.columns if c in bus0_to_bus.index]
+    demand_bus = demand[keep].rename(columns=bus0_to_bus)
+    demand_bus = demand_bus.T.groupby(level=0).sum().T
+
+    # Bus -> Zone 
+    b2z = pd.read_csv(busmap_bus_to_zone_path)
+    if "Bus" not in b2z.columns or zone_col not in b2z.columns:
         raise ValueError(
-            f"demand_profiles has missing values after aligning to network snapshots. "
-            f"First missing snapshots: {list(missing[:5])}"
+            f"{busmap_bus_to_zone_path} must contain columns 'Bus' and '{zone_col}'. "
+            f"Found columns: {list(b2z.columns)}"
         )
 
-    # Ensure buses exist
-    missing_buses = [b for b in demand_df.columns if b not in n.buses.index]
-    if missing_buses:
-        raise ValueError(
-            "demand_profiles columns must match bus names in the network. "
-            f"Missing buses (first 10): {missing_buses[:10]}"
-        )
+    b2z = b2z.copy()
+    b2z["Bus"] = pd.to_numeric(b2z["Bus"], errors="coerce").astype("Int64").astype(str)
+    b2z[zone_col] = b2z[zone_col].astype(str)
 
-    # Remove existing loads on those buses (avoid duplicates / double counting)
-    existing = n.loads.index[n.loads.bus.isin(demand_df.columns)]
+    bus_to_zone = b2z.set_index("Bus")[zone_col]
+
+    common_bus = [c for c in demand_bus.columns if c in bus_to_zone.index]
+    demand_zone = demand_bus[common_bus].rename(columns=bus_to_zone)
+    demand_zone = demand_zone.T.groupby(level=0).sum().T
+
+    buses_in_n = set(n.buses.index.astype(str))
+    demand_zone = demand_zone.loc[:, [z for z in demand_zone.columns if z in buses_in_n]]
+
+    existing = n.loads.index[n.loads.bus.astype(str).isin(demand_zone.columns)]
     if len(existing) > 0:
         n.mremove("Load", existing)
 
-    # Add loads named by bus, bus=bus, and p_set time series
-    n.madd("Load", demand_df.columns, bus=demand_df.columns, p_set=demand_df)
-
-    # Optional: mark them as AC loads (useful if later logic expects carrier == "AC")
-    n.loads.loc[demand_df.columns, "carrier"] = "AC"
+    cols = pd.Index(demand_zone.columns)
+    n.madd("Load", cols, bus=cols, p_set=demand_zone[cols])
+    n.loads.loc[cols, "carrier"] = "AC"
 
 
 def add_lifetime_wind_solar(n, costs):
@@ -301,13 +328,6 @@ if __name__ == "__main__":
 
     # TODO logging
 
-    energy_totals = pd.read_csv(
-        snakemake.input.energy_totals,
-        index_col=0,
-        keep_default_na=False,
-        na_values=[""],
-    )
-
     ##########################################################################
     ################# Functions adding different carrires ####################
     ##########################################################################
@@ -322,7 +342,7 @@ if __name__ == "__main__":
             break
     
     # Attach electricity-only demand (same convention as add_electricity.py)
-    attach_load_from_demand_profiles(n, snakemake.input.demand)
+    attach_load_from_demand_profiles(n, snakemake.input.demand, snakemake.input.busmap, snakemake.input.busmap_cluster)
 
 
     co2_budget = snakemake.params.co2_budget

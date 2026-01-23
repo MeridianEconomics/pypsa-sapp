@@ -363,8 +363,6 @@ if __name__ == "__main__":
 
     # update_config_from_wildcards(snakemake.config, snakemake.wildcards)
 
-    options = snakemake.params.sector
-
     baseyear = snakemake.params.baseyear
 
     n = pypsa.Network(snakemake.input.network)

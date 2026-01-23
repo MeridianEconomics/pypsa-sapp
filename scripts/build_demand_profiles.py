@@ -326,8 +326,9 @@ if __name__ == "__main__":
     start_date = snakemake.params.snapshots["start"]
     end_date = snakemake.params.snapshots["end"]
     out_path = snakemake.output[0]
-    
-    if snakemake.params.multi_horizon:
+
+    multi_horizon = getattr(snakemake.params, "multi_horizon", False)
+    if multi_horizon:
         load_paths = get_load_paths_gegis(snakemake.params.pypsaearth_dir + "data", snakemake.params.config, int(snakemake.wildcards.planning_horizons))
 
     build_demand_profiles(

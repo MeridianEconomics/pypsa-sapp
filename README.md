@@ -24,7 +24,7 @@ This model is still being improved but the following features have been implemen
 
 ### Renewable Energy Profiles improvement
 
-- AC DC Ratio implemented for Solar PV
+- DC AC Ratio implemented for Solar PV
 - GWA correction added for Onwind to improve reflection of high resource wind speeds
 - Custom REDZ raster added to restrict Onwind and Solar PV development to specific, high resource, regions
 

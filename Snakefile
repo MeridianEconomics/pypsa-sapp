@@ -671,6 +671,7 @@ rule cluster_network:
         focus_weights=config.get("focus_weights", None),
         custom_busmap=config["enable"].get("custom_busmap", False),
         subregion=config["subregion"],
+        lines=config['lines'],
     input:
         network="networks/" + RDIR + "elec_s{simpl}.nc",
         country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
@@ -1060,7 +1061,6 @@ if not config["custom_data"]["gas_network"]:
             contended_flag=config["build_shape_options"]["contended_flag"],
             geo_crs=config["crs"]["geo_crs"],
             custom_gas_network=config["custom_data"]["gas_network"],
-            gadm_custom_layer = config["build_shape_options"]["gadm_custom_layer"]
         input:
             regions_onshore=PYPSAEARTH_DIR + "resources/"
             + RDIR
@@ -1198,6 +1198,12 @@ rule prepare_elec_network:
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
         overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
+        busmap_cluster=PYPSAEARTH_DIR + "resources/"
+                    + RDIR
+                    + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
+        busmap=PYPSAEARTH_DIR + "resources/"
+                    + RDIR
+                    + "bus_regions/busmap_elec_s.csv",
         shapes_path=PYPSAEARTH_DIR + "resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
