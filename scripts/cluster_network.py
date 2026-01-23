@@ -603,6 +603,12 @@ def cluster_regions(busmaps, inputs, output):
         regions_c = regions_c.reset_index()
         regions_c.to_file(getattr(output, which))
 
+def apply_st_clair_curve(n):
+    # Multiply the SIL with the St Clair curve to get the line limt as a function of distance
+    length = n.lines["length"]# in km
+    SIL = n.lines["s_nom"] # Surge Impedance Loading in MW defined in base_network.py
+    return np.minimum(3 * SIL, SIL * 53.736 * (length ** -0.65)) # digitised from https://www.researchgate.net/figure/The-St-Clair-curve-as-based-on-the-results-of-14-retrieved-from-15-is-used-to_fig3_318692193
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
@@ -684,7 +690,7 @@ if __name__ == "__main__":
             f"Desired number of clusters ({n_clusters}) higher than the number of buses ({len(n.buses)})"
         )
     else:
-        line_length_factor = snakemake.params.length_factor
+        line_length_factor = snakemake.params.lines["length_factor"]
         Nyears = n.snapshot_weightings.objective.sum() / 8760
         hvac_overhead_cost = load_costs(
             snakemake.input.tech_costs,
@@ -759,6 +765,9 @@ if __name__ == "__main__":
         clustering.network = nearest_shape(
             clustering.network, country_shapes, crs, tolerance=tolerance
         )
+
+    if snakemake.params.lines.get("limits") == "St Clair":
+        clustering.network.lines["s_nom"] = apply_st_clair_curve(clustering.network)
 
     clustering.network.meta = dict(
         snakemake.config, **dict(wildcards=dict(snakemake.wildcards))
