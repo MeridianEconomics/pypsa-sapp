@@ -599,6 +599,22 @@ def add_land_use_constraint(n):
         _add_land_use_constraint_m(n)
     else:
         _add_land_use_constraint(n)
+    
+    g = n.generators
+
+    mask = g.p_nom_extendable & g.p_nom_max.notna()
+
+    # Ensure upper bound is never below what's already installed / required
+    g.loc[mask, "p_nom_max"] = (
+        g.loc[mask, ["p_nom_max", "p_nom"]]
+        .max(axis=1)
+    )
+
+    if "p_nom_min" in g.columns:
+        g.loc[mask, "p_nom_max"] = (
+            g.loc[mask, ["p_nom_max", "p_nom_min"]]
+            .max(axis=1)
+        )
 
 
 def _add_land_use_constraint(n):
