@@ -275,7 +275,6 @@ if __name__ == "__main__":
             ll="c1",
             opts="Co2L-4H",
             planning_horizons="2030",
-            sopts="144H",
             discountrate=0.071,
             demand="AB",
         )
@@ -333,13 +332,6 @@ if __name__ == "__main__":
     ##########################################################################
 
 
-    sopts = snakemake.wildcards.sopts.split("-")
-
-    for o in sopts:
-        m = re.match(r"^\d+h$", o, re.IGNORECASE)
-        if m is not None:
-            n = average_every_nhours(n, m.group(0))
-            break
     
     # Attach electricity-only demand (same convention as add_electricity.py)
     attach_load_from_demand_profiles(n, snakemake.input.demand, snakemake.input.busmap, snakemake.input.busmap_cluster)

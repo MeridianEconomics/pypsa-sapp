@@ -1210,14 +1210,14 @@ rule prepare_elec_network:
         demand = PYPSAEARTH_DIR + "resources/" + RDIR + "demand_profiles_{planning_horizons}.csv"
     output:
         RESDIR
-        + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+        + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
     threads: 1
     resources:
         mem_mb=2000,
     benchmark:
         (
             RESDIR
-            + "benchmarks/prepare_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec"
+            + "benchmarks/prepare_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec"
         )
     script:
         "scripts/prepare_elec_network.py"
@@ -2230,7 +2230,7 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             costs=config["costs"],
         input:
             network=RESDIR
-            + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+            + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
             powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
             busmap_s=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
             busmap=PYPSAEARTH_DIR + "resources/"
@@ -2239,7 +2239,7 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
         output:
             RESDIR
-            + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+            + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
         wildcard_constraints:
             # TODO: The first planning_horizon needs to be aligned across scenarios
             # snakemake does not support passing functions to wildcard_constraints
@@ -2250,10 +2250,10 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             mem_mb=2000,
         log:
             RESDIR
-            + "logs/add_existing_baseyear_elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.log",
+            + "logs/add_existing_baseyear_elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.log",
         benchmark:
             RESDIR
-            +"benchmarks/add_existing_baseyear/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec"
+            +"benchmarks/add_existing_baseyear/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec"
         script:
             "scripts/add_existing_elec_baseyear.py"
 
@@ -2273,7 +2273,7 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
 
         return (
             RESDIR
-            + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_"
+            + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_"
             + planning_horizon_p
             + "_{discountrate}_{demand}_elec.nc"
         )
@@ -2291,22 +2291,22 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             + RDIR
             + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
             network=RESDIR
-            + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+            + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
             network_p=solved_previous_horizon,  #solved network at previous time step
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
         output:
             RESDIR
-            + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+            + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
         threads: 4
         resources:
             mem_mb=10000,
         log:
             RESDIR
-            + "logs/add_brownfield_elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.log",
+            + "logs/add_brownfield_elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.log",
         benchmark:
             (
                 RESDIR
-                + "benchmarks/add_brownfield/elec_s{simpl}_ec_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec"
+                + "benchmarks/add_brownfield/elec_s{simpl}_ec_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec"
             )
         script:
             "./scripts/add_elec_brownfield.py"
@@ -2322,30 +2322,30 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
         input:
             overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network=RESDIR
-            + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+            + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
         output:
             network=RESDIR
-            + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+            + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
             # config=RESDIR
-            # + "configs/config.elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.yaml",
+            # + "configs/config.elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.yaml",
         shadow:
             "copy-minimal" if os.name == "nt" else "shallow"
         log:
             solver=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec_solver.log",
+            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec_solver.log",
             python=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec_python.log",
+            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec_python.log",
             memory=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec_memory.log",
+            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec_memory.log",
         threads: 25
         resources:
             mem_mb=config["solving"]["mem"],
         benchmark:
             (
                 RESDIR
-                + "benchmarks/solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec"
+                + "benchmarks/solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec"
             )
         script:
             "./scripts/solve_elec_network.py"
@@ -2354,7 +2354,7 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
         input:
             networks=expand(
                 RESDIR
-                + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
+                + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
                 **config["scenario"],
                 **config["costs"],
             ),
