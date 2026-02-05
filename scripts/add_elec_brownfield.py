@@ -14,6 +14,8 @@ import pypsa
 import xarray as xr
 from _helpers import sanitize_carriers, sanitize_locations
 from add_existing_baseyear import add_build_year_to_new_assets
+import re
+import yaml
 
 # from pypsa.clustering.spatial import normed_or_uniform
 
@@ -52,6 +54,119 @@ def add_brownfield(n, n_p, year):
         for tattr in n.component_attrs[c.name].index[selection]:
             n.import_series_from_dataframe(c.pnl[tattr], c.name, tattr)
 
+
+def _pypsa_carrier_from_pp(row) -> str:
+    fuel = str(row.get("Fueltype", "")).strip().lower()
+    tech = str(row.get("Technology", "")).strip().lower()
+
+    if fuel in {"natural gas", "gas"}:
+        if "ccgt" in tech or "combined" in tech:
+            return "CCGT"
+        if "ocgt" in tech or "open" in tech:
+            return "OCGT"
+        return "gas"
+
+    if fuel in {"hard coal", "lignite", "coal"}:
+        return "coal"
+    
+    if fuel == "oil":
+        return "oil"
+
+    if fuel == "hydro":
+        if "run" in tech or "run-of-river" in tech or "ror" in tech:
+            return "ror"
+        return "hydro"
+
+    return fuel
+
+
+def cap_exogenous_generators(
+    n_p,
+    n,
+    powerplants_csv_path: str,
+    ppm_cfg_yaml_path: str,
+    year: int,
+):
+    """
+    For horizon `year`, compute surviving plant capacity from powerplants.csv and
+    cap/remove EXOGENOUS generators in the previous network (n_p).
+
+    Endogenous builds are preserved by excluding component names ending with '-YYYY'.
+    """
+    with open(ppm_cfg_yaml_path, "r") as f:
+        cfg = yaml.safe_load(f)
+    fuel_to_life = cfg.get("fuel_to_lifetime", {})
+
+    pp = pd.read_csv(powerplants_csv_path).copy()
+
+    pp["bus"] = pp["bus"].astype(str).str.strip()
+    pp["Capacity"] = pd.to_numeric(pp["Capacity"], errors="coerce").fillna(0.0)
+    pp["DateIn"] = pd.to_numeric(pp["DateIn"], errors="coerce")
+    pp["DateOut"] = pd.to_numeric(pp["DateOut"], errors="coerce")
+
+    # If DateIn is missing OR no lifetime default exists -> treat as "never retires" (inf)
+    def _fill_dateout(row):
+        di = row["DateIn"]
+        do = row["DateOut"]
+        if np.isfinite(do):
+            return do
+        if not np.isfinite(di):
+            return np.inf
+        fuel = str(row["Fueltype"]).strip()
+        life = fuel_to_life.get(fuel, None)
+        return (di + float(life)) if life is not None else np.inf
+
+    pp["DateOut_filled"] = pp.apply(_fill_dateout, axis=1)
+
+    pp["carrier"] = pp.apply(_pypsa_carrier_from_pp, axis=1)
+
+    # Surviving plant capacity in this horizon year
+    surviving = pp[(pp["DateIn"] <= year) & (pp["DateOut_filled"] > year)]
+    surviving_cap = surviving.groupby(["region_id", "carrier"])["Capacity"].sum()
+
+    # Identify exogenous generators in previous network (no "-YYYY" suffix)
+    idx = n_p.generators.index.to_series()
+    is_endogenous = idx.str.contains(r"-\d{4}$", regex=True)
+    exo = n_p.generators.loc[~is_endogenous].copy()
+
+    removed = 0
+    capped = 0
+
+    for g, row in exo.iterrows():
+        bus = str(row["bus"])
+        bus = bus.replace("_AC", "").replace("_DC", "")
+        car = str(row["carrier"]).lower()
+
+        cap = float(surviving_cap.get((bus, car), 0.0))
+
+        if cap <= 0.0:
+            n_p.mremove("Generator", [g])
+            if g in n.generators.index:
+                n.mremove("Generator", [g])
+            removed += 1
+            continue
+
+        if "p_nom_opt" in n_p.generators.columns and pd.notnull(n_p.generators.at[g, "p_nom_opt"]):
+            old = float(n_p.generators.at[g, "p_nom_opt"])
+            new = min(old, cap)
+            if new < old - 1e-6:
+                n_p.generators.at[g, "p_nom_opt"] = new
+                n_p.generators.at[g, "p_nom"] = new
+                if g in n.generators.index:
+                    n.generators.at[g, "p_nom"] = new
+                capped += 1
+        else:
+            old = float(n_p.generators.at[g, "p_nom"])
+            new = min(old, cap)
+            if new < old - 1e-6:
+                n_p.generators.at[g, "p_nom"] = new
+                if g in n.generators.index:
+                    n.generators.at[g, "p_nom"] = new
+                capped += 1
+
+    logger.info(
+        f"Exogenous retirement by plant table (year={year}): removed {removed}, capped {capped}"
+    )
 
 
 def disable_grid_expansion_if_limit_hit(n):
@@ -116,10 +231,10 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "add_elec_brownfield",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
-            planning_horizons="2030",
+            clusters="10",
+            ll="copt",
+            opts="Co2L-3h",
+            planning_horizons="2040",
             discountrate=0.071,
             demand="AB",
         )
@@ -133,6 +248,8 @@ if __name__ == "__main__":
     add_build_year_to_new_assets(n, year)
 
     n_p = pypsa.Network(snakemake.input.network_p)
+
+    cap_exogenous_generators(n_p, n, snakemake.input.powerplants, snakemake.input.pm_config, year)
 
     add_brownfield(n, n_p, year)
 
