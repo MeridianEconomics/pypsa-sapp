@@ -12,7 +12,7 @@ logging:
 results_dir: results/
 summary_dir: results/
 
-foresight: overnight
+foresight: myopic
 
 
 countries: ["AO", "BW", "CD", "SZ", "LS", "MW", "MZ", "NA", "ZA", "TZ", "ZM", "ZW"]
@@ -57,9 +57,9 @@ scenario:
   ll: ["copt"]
   clusters: [10]
   opts: [Co2L-3h]
-  planning_horizons: # investment years for myopic and perfect; or costs year for overnight
-  - 2040
-  sopts:
+  planning_horizons: [2030, 2040, 2050] # investment years for myopic and perfect; or costs year for overnight
+  # - 2030
+  sopts: 
   - "144h"
   demand:
   - "AB"
@@ -108,7 +108,7 @@ cluster_options:
       p_nom: sum
       p_nom_max: sum
       p_nom_min: sum
-      p_min_pu: mean
+      p_min_pu: weighted_average
       p_max_pu: weighted_average
       marginal_cost: mean
       committable: any
@@ -163,9 +163,9 @@ base_network:
   min_voltage_rebase_voltage: 51000 # [V] minimum voltage in base network
 
 load_options:
-  ssp: "ssp2-2.6" # shared socio-economic pathway (GDP and population growth) scenario to consider
+  ssp: "ssp-sapp" #"ssp2-2.6" #"ssp-sapp" # shared socio-economic pathway (GDP and population growth) scenario to consider
   weather_year: 2013 # Load scenarios available with different weather year (different renewable potentials)
-  prediction_year: 2040 # Load scenarios available with different prediction year (GDP, population)
+  prediction_year: 2030 # Load scenarios available with different prediction year (GDP, population)
   scale: 1 # scales all load time-series, i.e. 2 = doubles load
 
 co2_budget:
@@ -174,17 +174,17 @@ co2_budget:
   co2base_value: co2limit # choose from: [co2limit, co2base, absolute, {float}]
   year:
     2020: 1.0
-    2025: 0.85
-    2030: 0.70
-    2035: 0.55
-    2040: 0.40
-    2045: 0.25
-    2050: 0.1
+    2025: 1.0
+    2030: 1.0
+    2035: 0.69
+    2040: 0.11
+    2045: 0.09
+    2050: 0.01
 
 electricity:
   base_voltage: 380.
   voltages: [132., 220., 300., 380., 500., 750.]
-  co2limit: 7.75e+7 # European default, 0.05 * 3.1e9*0.5, needs to be adjusted for Africa
+  co2limit: 160e+6 # European default, 0.05 * 3.1e9*0.5, needs to be adjusted for Africa
   co2base: 1.487e+9 # European default, adjustment to Africa necessary
   agg_p_nom_limits: PYPSAEARTH_DIR + data/agg_p_nom_minmax.csv
   hvdc_as_lines: false # should HVDC lines be modeled as `Line` or as `Link` component?
@@ -198,17 +198,23 @@ electricity:
     contingency: 0 # fixed capacity in MW
 
   max_hours:
-    battery: 6
+    battery: 4
     H2: 168
 
   extendable_carriers:
-    Generator: [solar, onwind, offwind-ac, offwind-dc, OCGT]
-    StorageUnit: [] # battery, H2
+    Generator: [solar, onwind, offwind-ac, offwind-dc, OCGT, CCGT]
+    StorageUnit: [battery] # battery, H2
     Store: [battery, H2]
     Link: [] # H2 pipeline
 
-  powerplants_filter: (DateOut >= 2040 or DateOut != DateOut)
+  powerplants_filter: (DateOut >= 2030 or DateOut != DateOut)
   custom_powerplants: false #  "false" use only powerplantmatching (ppm) data, "merge" combines ppm and custom powerplants, "replace" use only custom powerplants
+
+  outages:
+    hourly_profiles_folder: resources/outages 
+    hourly_profiles_file: 2030.csv # index = snapshots, columns = station names that match Name in powerplantmatching
+    parameter: [p_max_pu, p_min_pu] # options [p_max_pu, p_min_pu]
+    scaling: [1, 0.6]
 
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
   renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro]
@@ -234,6 +240,9 @@ lines:
     750.: "Al/St 560/50 4-bundle 750.0"
   dc_types:
     500.: "HVDC XLPE 1000"
+  limits: "St Clair" # ["thermal", "SIL", "St Clair"]
+  default_frequency: 50.
+  default_frequency: 50.
   s_max_pu: 0.7
   s_nom_max: .inf
   length_factor: 1.25
@@ -412,7 +421,7 @@ renewable:
 # TODO: Needs to be adjusted for Africa.
 # Costs Configuration
 costs:
-  year: 2040
+  year: 2030
   technology_data_version: v0.13.2
   discountrate: [0.071] #, 0.086, 0.111]
   country_specific_data: "" # (optional) Reference to the desired technology-data directory for techno-economic input data; Only "" and "US" supported, for other values check the technology-data output directory
@@ -496,6 +505,8 @@ monte_carlo:
       args: [0.5, 2]
 
 # ------------------- SECTOR OPTIONS -------------------
+
+enable_sector_coupling: false
 
 policy_config:
   hydrogen:
@@ -786,8 +797,8 @@ solving:
     # nhours: 10
 
   solver:
-    name: cplex
-    options: cplex-default
+    name: copt
+    options: copt-default
 
   solver_options:
     highs-default:
@@ -839,8 +850,10 @@ solving:
       feasopt.tolerance: 1.e-6
     copt-default:
       Threads: 8
-      LpMethod: 2
+      LpMethod: 4
       Crossover: 0
+      BarHomogeneous: 0
+      BarIterLimit: 50000
     cbc-default: {} # Used in CI
     glpk-default: {} # Used in CI
 
