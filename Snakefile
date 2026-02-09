@@ -2294,6 +2294,8 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
             network_p=solved_previous_horizon,  #solved network at previous time step
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            pm_config="configs/powerplantmatching_config.yaml",
+            powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv"
         output:
             RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",

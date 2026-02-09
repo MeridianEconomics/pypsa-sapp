@@ -89,7 +89,7 @@ def cap_exogenous_generators(
 ):
     """
     For horizon `year`, compute surviving plant capacity from powerplants.csv and
-    cap/remove EXOGENOUS generators in the previous network (n_p).
+    cap/remove EXOGENOUS generators.
 
     Endogenous builds are preserved by excluding component names ending with '-YYYY'.
     """
@@ -124,10 +124,10 @@ def cap_exogenous_generators(
     surviving = pp[(pp["DateIn"] <= year) & (pp["DateOut_filled"] > year)]
     surviving_cap = surviving.groupby(["region_id", "carrier"])["Capacity"].sum()
 
-    # Identify exogenous generators in previous network (no "-YYYY" suffix)
-    idx = n_p.generators.index.to_series()
+    # Identify exogenous generators in the network (no "-YYYY" suffix)
+    idx = n.generators.index.to_series()
     is_endogenous = idx.str.contains(r"-\d{4}$", regex=True)
-    exo = n_p.generators.loc[~is_endogenous].copy()
+    exo = n.generators.loc[~is_endogenous].copy()
 
     removed = 0
     capped = 0
@@ -140,29 +140,23 @@ def cap_exogenous_generators(
         cap = float(surviving_cap.get((bus, car), 0.0))
 
         if cap <= 0.0:
-            n_p.mremove("Generator", [g])
-            if g in n.generators.index:
-                n.mremove("Generator", [g])
+            n.mremove("Generator", [g])
+            if g in n_p.generators.index:
+                n_p.mremove("Generator", [g])
             removed += 1
             continue
 
-        if "p_nom_opt" in n_p.generators.columns and pd.notnull(n_p.generators.at[g, "p_nom_opt"]):
-            old = float(n_p.generators.at[g, "p_nom_opt"])
-            new = min(old, cap)
-            if new < old - 1e-6:
-                n_p.generators.at[g, "p_nom_opt"] = new
+        old = float(n.generators.at[g, "p_nom"])
+        new = min(old, cap)
+        if new < old - 1e-6:
+            n.generators.at[g, "p_nom"] = new
+            n.generators.at[g, "p_nom_min"] = new
+            if g in n_p.generators.index:
                 n_p.generators.at[g, "p_nom"] = new
-                if g in n.generators.index:
-                    n.generators.at[g, "p_nom"] = new
-                capped += 1
-        else:
-            old = float(n_p.generators.at[g, "p_nom"])
-            new = min(old, cap)
-            if new < old - 1e-6:
-                n_p.generators.at[g, "p_nom"] = new
-                if g in n.generators.index:
-                    n.generators.at[g, "p_nom"] = new
-                capped += 1
+                n_p.generators.at[g, "p_nom_min"] = new
+                if "p_nom_opt" in n_p.generators.columns and pd.notnull(n_p.generators.at[g, "p_nom_opt"]):
+                    n_p.generators.at[g, "p_nom_opt"] = new
+            capped += 1
 
     logger.info(
         f"Exogenous retirement by plant table (year={year}): removed {removed}, capped {capped}"
@@ -234,7 +228,7 @@ if __name__ == "__main__":
             clusters="10",
             ll="copt",
             opts="Co2L-3h",
-            planning_horizons="2040",
+            planning_horizons="2050",
             discountrate=0.071,
             demand="AB",
         )
