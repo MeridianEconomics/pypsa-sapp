@@ -6,7 +6,7 @@ SPDX-License-Identifier: AGPL-3.0-or-later
 
 # PyPSA-SAPP
 
-The PyPSA-SAPP model is an extension of PyPSA-Earth developed for the Southern African Power Pool (SAPP) by Meridian Economics. This model is open-source and is currently in the development stage for more accurate information on the SAPP. If you would like to collaborate, please contact Janet.cronje@meridianeconomics.co.za
+The PyPSA-SAPP model is an extension of PyPSA-Earth developed for the Southern African Power Pool (SAPP) by Meridian Economics. If you would like to collaborate, please contact Janet.cronje@meridianeconomics.co.za
 
 ## Setup difference from PyPSA-Earth
 
@@ -28,7 +28,7 @@ This model is still being improved but the following features have been implemen
 - GWA correction added for Onwind to improve reflection of high resource wind speeds
 - Custom REDZ raster added to restrict Onwind and Solar PV development to specific, high resource, regions
 
-The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated model
+The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated myopic model
 
 ```yaml
 renewable:
@@ -54,12 +54,27 @@ renewable:
 
 In PyPSA-Earth, line transfer capacities are calculated using thermal limits. In the SAPP region, very long 400 kV and 765 kV lines result in a significant overestimation of the capacities when thermal limits are used. Another method to calculate inter-region transfer capacities is using stability limits by utilising Surge Impedance Loading (SIL) in combination St Clair Curves to create a more accurate estimation of the line capacities
 
-The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated model
+The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated myopic model
 
 ```yaml
 lines:
   limits: "St Clair" # ["thermal", "SIL", "St Clair"]
   default_frequency: 50.
+```
+
+### Power plant outages
+
+In PyPSA-Earth, the modelling of coal plants is very simplistic and not representative of South Africa's coal fleet. Therefore, hourly outage profiles can be specified in a csv for any generator and p_max_pu and/or p_min_pu be adjusted. A scaling factor for each parameter is also specified to adjust each individual parameter's values.
+
+The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated myopic model
+
+```yaml
+electricity:
+  outages:
+    hourly_profiles_folder: resources/outages 
+    hourly_profiles_file: 2030.csv # index = snapshots, columns = station names that match Name in powerplantmatching
+    parameter: [p_max_pu, p_min_pu] # options [p_max_pu, p_min_pu]
+    scaling: [1, 0.6]
 ```
 
 ### Electricity only workflow for myopic foresight

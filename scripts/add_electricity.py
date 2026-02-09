@@ -107,6 +107,9 @@ from _helpers import (
 )
 from powerplantmatching.export import map_country_bus
 
+import os
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 idx = pd.IndexSlice
 
 logger = create_logger(__name__)
@@ -453,6 +456,7 @@ def attach_conventional_generators(
     renewable_carriers,
     conventional_config,
     conventional_inputs,
+    electricity_config,
 ):
     carriers = set(conventional_carriers) | (
         set(extendable_carriers["Generator"]) - set(renewable_carriers)
@@ -472,20 +476,63 @@ def attach_conventional_generators(
         )
     )
 
-    n.madd(
-        "Generator",
-        ppl.index,
-        carrier=ppl.carrier,
-        bus=ppl.bus,
-        p_nom_min=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
-        p_nom=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
-        p_nom_extendable=ppl.carrier.isin(extendable_carriers["Generator"]),
-        efficiency=ppl.efficiency,
-        marginal_cost=ppl.marginal_cost,
-        capital_cost=ppl.capital_cost,
-        build_year=ppl.datein.fillna(0).astype(int),
-        lifetime=(ppl.dateout - ppl.datein).fillna(np.inf),
-    )
+    if "outages" in electricity_config:
+        outages = pd.read_csv(PYPSAEARTH_DIR + electricity_config["outages"]["hourly_profiles_folder"] + '/' + electricity_config["outages"]["hourly_profiles_file"], index_col=[0])
+        outages = outages.rename(columns=dict(zip(ppl["name"], ppl.index)))
+
+        if len(outages) == 8760:
+            outages.index = n.generators_t.p_max_pu.index
+
+            if "p_max_pu" in electricity_config["outages"]["parameter"]:
+                scaling_index = electricity_config["outages"]["parameter"].index("p_max_pu")
+                outages_p_max_pu = outages.copy() * electricity_config["outages"]["scaling"][scaling_index]
+            else:
+                outages_p_max_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=1)
+
+            if "p_min_pu" in electricity_config["outages"]["parameter"]:
+                scaling_index = electricity_config["outages"]["parameter"].index("p_min_pu")
+                outages_p_min_pu = outages.copy() * electricity_config["outages"]["scaling"][scaling_index]
+            else:
+                outages_p_min_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=0)
+
+        else:
+            logger.info(
+                "Profiles given are not hourly. Defaulting to 1 and 0 for p_max_pu and p_min_pu respectivly"
+            )
+            outages_p_max_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=1)
+            outages_p_min_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=0)
+
+        n.madd(
+            "Generator",
+            ppl.index,
+            carrier=ppl.carrier,
+            bus=ppl.bus,
+            p_nom_min=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
+            p_nom=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
+            p_nom_extendable=ppl.carrier.isin(extendable_carriers["Generator"]),
+            p_max_pu=outages_p_max_pu,
+            p_min_pu=outages_p_min_pu,
+            efficiency=ppl.efficiency,
+            marginal_cost=ppl.marginal_cost,
+            capital_cost=ppl.capital_cost,
+            build_year=ppl.datein.fillna(0).astype(int),
+            lifetime=(ppl.dateout - ppl.datein).fillna(np.inf),
+        )
+    else:
+        n.madd(
+            "Generator",
+            ppl.index,
+            carrier=ppl.carrier,
+            bus=ppl.bus,
+            p_nom_min=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
+            p_nom=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
+            p_nom_extendable=ppl.carrier.isin(extendable_carriers["Generator"]),
+            efficiency=ppl.efficiency,
+            marginal_cost=ppl.marginal_cost,
+            capital_cost=ppl.capital_cost,
+            build_year=ppl.datein.fillna(0).astype(int),
+            lifetime=(ppl.dateout - ppl.datein).fillna(np.inf),
+        )
 
     for carrier in conventional_config:
         # Generators with technology affected
@@ -894,6 +941,7 @@ if __name__ == "__main__":
         renewable_carriers,
         snakemake.params.conventional,
         conventional_inputs,
+        snakemake.params.electricity,
     )
     attach_wind_and_solar(
         n,
