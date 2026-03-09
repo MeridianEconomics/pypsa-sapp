@@ -13,7 +13,7 @@ import pandas as pd
 import pypsa
 import xarray as xr
 from _helpers import sanitize_carriers, sanitize_locations
-from add_existing_baseyear import add_build_year_to_new_assets
+from add_existing_elec_baseyear import add_build_year_to_new_assets
 import re
 import yaml
 
@@ -31,7 +31,7 @@ def add_brownfield(n, n_p, year):
     dc_i = n.links[n.links.carrier == "DC"].index
     n.links.loc[dc_i, "p_nom_min"] = n_p.links.loc[dc_i, "p_nom_opt"]
 
-    for c in n_p.iterate_components(["Link", "Generator", "Store"]):
+    for c in n_p.iterate_components(["Link", "Generator", "Store", "StorageUnit"]):
         attr = "e" if c.name == "Store" else "p"
 
         # first, remove generators, links and stores that track
@@ -162,23 +162,6 @@ def cap_exogenous_generators(
         f"Exogenous retirement by plant table (year={year}): removed {removed}, capped {capped}"
     )
 
-def add_emission_prices(n, emission_prices, years):
-    emission_price = {'co2':emission_prices["co2_per_year"][years[0]]}
-    ep_current = (
-        pd.Series(emission_price).rename(lambda x: x + "_emissions")
-        * n.carriers.filter(like="_emissions")
-    ).sum(axis=1)
-    emission_price_p = {'co2':emission_prices["co2_per_year"][years[1]]}
-    ep_p = (
-        pd.Series(emission_price_p).rename(lambda x: x + "_emissions")
-        * n.carriers.filter(like="_emissions")
-    ).sum(axis=1)
-    ep = ep_current - ep_p
-    gen_ep = n.generators.carrier.map(ep) / n.generators.efficiency
-    n.generators["marginal_cost"] += gen_ep
-    su_ep = n.storage_units.carrier.map(ep) / n.storage_units.efficiency_dispatch
-    n.storage_units["marginal_cost"] += su_ep
-
 
 def disable_grid_expansion_if_limit_hit(n):
     """
@@ -253,11 +236,6 @@ if __name__ == "__main__":
     logger.info(f"Preparing brownfield from the file {snakemake.input.network_p}")
 
     year = int(snakemake.wildcards.planning_horizons)
-    opts = snakemake.wildcards.opts.split("-")
-
-    planning_horizons = snakemake.params.planning_horizons
-    i = planning_horizons.index(int(year))
-    planning_horizon_p = planning_horizons[i - 1]
 
     n = pypsa.Network(snakemake.input.network)
 
@@ -273,19 +251,6 @@ if __name__ == "__main__":
 
     sanitize_carriers(n, snakemake.config)
     sanitize_locations(n)
-
-
-    if "co2_per_year" in snakemake.params.costs["emission_prices"]:
-        for o in opts:
-            if "Ep" in o:
-                m = re.findall("[0-9]*\.?[0-9]+$", o)
-                if len(m) > 0:
-                    logger.info("Setting emission prices according to wildcard value.")
-                    add_emission_prices(n, dict(co2=float(m[0])))
-                else:
-                    logger.info("Setting emission prices according to config value.")
-                    add_emission_prices(n, snakemake.params.costs["emission_prices"], [year, planning_horizon_p])
-                break
 
     n.meta = dict(snakemake.config, **dict(wildcards=dict(snakemake.wildcards)))
     n.export_to_netcdf(snakemake.output[0])

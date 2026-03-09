@@ -101,6 +101,7 @@ def attach_storageunits(n, costs, config):
             efficiency_dispatch=costs.at[lookup_dispatch[carrier], "efficiency"],
             max_hours=max_hours[carrier],
             cyclic_state_of_charge=True,
+            lifetime=costs.at[carrier, "lifetime"]
         )
 
 
