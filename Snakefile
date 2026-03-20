@@ -2285,7 +2285,7 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             # drop_leap_day=config["enable"]["drop_leap_day"],
             carriers=config["electricity"]["renewable_carriers"],
             costs = config["costs"],
-            planning_horizons = config["scenario"]["planning_horizons"]
+            electricity=config["electricity"],
         input:
             # unpack(input_profile_tech_brownfield),
             simplify_busmap=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/busmap_elec_s{simpl}.csv",
