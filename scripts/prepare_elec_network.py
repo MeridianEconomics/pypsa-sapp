@@ -31,6 +31,7 @@ from _helpers import (
     two_2_three_digits_country,
 )
 from prepare_network import add_co2limit
+from add_electricity import load_costs
 
 # Environment variables
 PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
@@ -271,10 +272,10 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "prepare_elec_network",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
-            planning_horizons="2030",
+            clusters="10",
+            ll="copt",
+            opts="Ep-1h",
+            planning_horizons="2040",
             discountrate=0.071,
             demand="AB",
         )
@@ -309,16 +310,12 @@ if __name__ == "__main__":
     investment_year = int(snakemake.wildcards.planning_horizons[-4:])
     demand_sc = snakemake.wildcards.demand  # loading the demand scenario wildcard
 
-    # Prepare the costs dataframe
-    costs = prepare_costs(
+
+    costs = load_costs(
         snakemake.input.costs,
-        snakemake.config["costs"],
-        snakemake.params.costs["output_currency"],
-        snakemake.params.costs["fill_values"],
+        snakemake.params.costs,
+        snakemake.params.electricity,
         Nyears,
-        snakemake.params.costs["default_exchange_rate"],
-        snakemake.params.costs["future_exchange_rate_strategy"],
-        snakemake.params.costs["custom_future_exchange_rate"],
     )
 
 
