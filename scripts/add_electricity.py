@@ -237,10 +237,11 @@ def load_costs(tech_costs, config, elec_config, Nyears=1):
 
     def costs_for_storage(store, link1, link2=None, max_hours=1.0):
         capital_cost = link1["capital_cost"] + max_hours * store["capital_cost"]
+        lifetime = store["lifetime"]
         if link2 is not None:
             capital_cost += link2["capital_cost"]
         return pd.Series(
-            dict(capital_cost=capital_cost, marginal_cost=0.0, co2_emissions=0.0)
+            dict(capital_cost=capital_cost, marginal_cost=0.0, co2_emissions=0.0, lifetime = lifetime)
         )
 
     max_hours = elec_config["max_hours"]
