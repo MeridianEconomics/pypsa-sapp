@@ -76,12 +76,16 @@ def _pypsa_carrier_from_pp(row) -> str:
     if fuel == "hydro":
         if "run" in tech or "run-of-river" in tech or "ror" in tech:
             return "ror"
+        if tech == "pumped storage":
+            return "phs"
+        if tech == "reservoir":
+            return "reservoir"
         return "hydro"
 
     return fuel
 
 
-def cap_exogenous_generators(
+def cap_exogenous_generators_and_storage_units(
     n_p,
     n,
     powerplants_csv_path: str,
@@ -90,7 +94,7 @@ def cap_exogenous_generators(
 ):
     """
     For horizon `year`, compute surviving plant capacity from powerplants.csv and
-    cap/remove EXOGENOUS generators.
+    cap/remove EXOGENOUS generators and storage units.
 
     Endogenous builds are preserved by excluding component names ending with '-YYYY'.
     """
@@ -160,7 +164,47 @@ def cap_exogenous_generators(
             capped += 1
 
     logger.info(
-        f"Exogenous retirement by plant table (year={year}): removed {removed}, capped {capped}"
+        f"Exogenous Generator retirement by plant table (year={year}): removed {removed}, capped {capped}"
+    )
+
+    # Identify exogenous storage units in the network (no "-YYYY" suffix)
+    idx = n.storage_units.index.to_series()
+    is_endogenous = idx.str.contains(r"-\d{4}$", regex=True)
+    exo = n.storage_units.loc[~is_endogenous].copy()
+
+    removed = 0
+    capped = 0
+
+    for su, row in exo.iterrows():
+        bus = str(row["bus"])
+        bus = bus.replace("_AC", "").replace("_DC", "")
+        car = str(row["carrier"]).lower()
+        if car == "hydro":
+            car = "reservoir"
+
+        cap = float(surviving_cap.get((bus, car), 0.0))
+
+        if cap <= 0.0:
+            n.mremove("StorageUnit", [su])
+            if su in n_p.storage_units.index:
+                n_p.mremove("StorageUnit", [su])
+            removed += 1
+            continue
+
+        old = float(n.storage_units.at[su, "p_nom"])
+        new = min(old, cap)
+        if new < old - 1e-6:
+            n.storage_units.at[su, "p_nom"] = new
+            n.storage_units.at[su, "p_nom_min"] = new
+            if su in n_p.storage_units.index:
+                n_p.storage_units.at[su, "p_nom"] = new
+                n_p.storage_units.at[su, "p_nom_min"] = new
+                if "p_nom_opt" in n_p.storage_units.columns and pd.notnull(n_p.storage_units.at[su, "p_nom_opt"]):
+                    n_p.storage_units.at[su, "p_nom_opt"] = new
+            capped += 1
+
+    logger.info(
+        f"Exogenous Storage Unit retirement by plant table (year={year}): removed {removed}, capped {capped}"
     )
 
 def update_costs(n, costs):
@@ -287,7 +331,7 @@ if __name__ == "__main__":
 
     n_p = pypsa.Network(snakemake.input.network_p)
 
-    cap_exogenous_generators(n_p, n, snakemake.input.powerplants, snakemake.input.pm_config, year)
+    cap_exogenous_generators_and_storage_units(n_p, n, snakemake.input.powerplants, snakemake.input.pm_config, year)
 
     add_brownfield(n, n_p, year)
 
