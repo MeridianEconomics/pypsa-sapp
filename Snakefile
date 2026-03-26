@@ -79,13 +79,13 @@ ATLITE_NPROCESSES = config["atlite"].get("nprocesses", 4)
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*|all",
     clusters="[0-9]+(m|flex)?|all|min",
-    ll="(v|c)([0-9\.]+|opt|all)|all",
-    opts="[-+a-zA-Z0-9\.]*",
-    unc="[-+a-zA-Z0-9\.]*",
-    sopts="[-+a-zA-Z0-9\.\s]*",
-    discountrate="[-+a-zA-Z0-9\.\s]*",
-    demand="[-+a-zA-Z0-9\.\s]*",
-    h2export="[0-9]+(\.[0-9]+)?",
+    ll=r"(v|c|l)([0-9\.]+|opt|all)|all",
+    opts=r"[-+a-zA-Z0-9\.]*",
+    unc=r"[-+a-zA-Z0-9\.]*",
+    sopts=r"[-+a-zA-Z0-9\.\s]*",
+    discountrate=r"[-+a-zA-Z0-9\.\s]*",
+    demand=r"[-+a-zA-Z0-9\.\s]*",
+    h2export=r"[0-9]+(\.[0-9]+)?",
     planning_horizons="20[2-9][0-9]|2100",
 
 
@@ -169,6 +169,17 @@ if config["enable"].get("retrieve_databundle", True):
             "scripts/retrieve_databundle_light.py"
 
 
+if config["enable"].get("download_global_buildings", True):
+
+    rule download_global_buildings:
+        params:
+            crs=config["crs"],
+        output:
+            "data/global_buildings/{country}_global_buildings_raw.parquet",
+        script:
+            "scripts/download_global_buildings.py"
+
+
 if config["enable"].get("download_osm_data", True):
 
     rule download_osm_data:
@@ -230,6 +241,16 @@ rule build_osm_network:
         + RDIR
         + "base_network/all_transformers_build_network.csv",
         substations=PYPSAEARTH_DIR + "resources/" + RDIR + "base_network/all_buses_build_network.csv",
+        lines_geo=PYPSAEARTH_DIR + "resources/" + RDIR + "base_network/all_lines_build_network.geojson",
+        converters_geo=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "base_network/all_converters_build_network.geojson",
+        transformers_geo=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "base_network/all_transformers_build_network.geojson",
+        substations_geo=PYPSAEARTH_DIR + "resources/"
+        + RDIR
+        + "base_network/all_buses_build_network.geojson",
     log:
         "logs/" + RDIR + "build_osm_network.log",
     benchmark:
@@ -377,12 +398,16 @@ if config["enable"].get("build_natura_raster", False):
     rule build_natura_raster:
         params:
             area_crs=config["crs"]["area_crs"],
+            natura=config["natura"],
+            disable_progress=not config["enable"]["progress_bar"],
         input:
             shapefiles_land=PYPSAEARTH_DIR + "data/landcover",
             cutouts=expand(
                 PYPSAEARTH_DIR + "cutouts/" + CDIR + "{cutout}.nc",
                 cutout=[c["cutout"] for _, c in config["renewable"].items()],
             ),
+            country_shapes="resources/" + RDIR + "shapes/country_shapes.geojson",
+            offshore_shapes="resources/" + RDIR + "shapes/offshore_shapes.geojson",
         output:
             PYPSAEARTH_DIR + "resources/" + RDIR + "natura.tiff",
         log:
@@ -496,6 +521,62 @@ rule build_demand_profiles_years:
         mem_mb=3000,
     script:
         "scripts/build_demand_profiles.py"
+    
+
+rule build_demand_profiles_years:
+    params:
+        snapshots=config["snapshots"],
+        load_options=config["load_options"],
+        countries=config["countries"],
+        config = config,
+        pypsaearth_dir = PYPSAEARTH_DIR,
+        multi_horizon = True
+    input:
+        base_network="networks/" + RDIR + "base.nc",
+        regions=PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_onshore.geojson",
+        load=load_data_paths,
+        #gadm_shapes="resources/" + RDIR + "shapes/MAR2.geojson",
+        #using this line instead of the following will test updated gadm shapes for MA.
+        #To use: downlaod file from the google drive and place it in resources/" + RDIR + "shapes/
+        #Link: https://drive.google.com/drive/u/1/folders/1dkW1wKBWvSY4i-XEuQFFBj242p0VdUlM
+        gadm_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/gadm_shapes.geojson",
+    output:
+        PYPSAEARTH_DIR + "resources/" + RDIR + "demand_profiles_{planning_horizons}.csv",
+    log:
+        "logs/" + RDIR + "build_demand_profiles_{planning_horizons}.log",
+    benchmark:
+        "benchmarks/" + RDIR + "build_demand_profiles_{planning_horizons}"
+    threads: 1
+    resources:
+        mem_mb=3000,
+    script:
+        "scripts/build_demand_profiles.py"
+
+
+HYDRO_PROFILES = {
+    "hydro_capacities": "data/hydro_capacities.csv",
+    "eia_hydro_generation": "data/eia_hydro_annual_generation.csv",
+    "irena_stats": "data/IRENA_Statistics_Extract_2025H2.xlsx",
+    "powerplants": "resources/" + RDIR + "powerplants.csv",
+    "hydrobasins": "data/hydrobasins/hybas_world.shp",
+}
+
+
+def inputs_hydro(w):
+    return HYDRO_PROFILES if w.technology == "hydro" else {}
+
+
+HYDRO_PROFILES = {
+    "hydro_capacities": "data/hydro_capacities.csv",
+    "eia_hydro_generation": "data/eia_hydro_annual_generation.csv",
+    "irena_stats": "data/IRENA_Statistics_Extract_2025H2.xlsx",
+    "powerplants": "resources/" + RDIR + "powerplants.csv",
+    "hydrobasins": "data/hydrobasins/hybas_world.shp",
+}
+
+
+def inputs_hydro(w):
+    return HYDRO_PROFILES if w.technology == "hydro" else {}
 
 
 rule build_renewable_profiles:
@@ -506,14 +587,12 @@ rule build_renewable_profiles:
         countries=config["countries"],
         alternative_clustering=config["cluster_options"]["alternative_clustering"],
     input:
+        unpack(inputs_hydro),
         natura=PYPSAEARTH_DIR + "resources/" + RDIR + "natura.tiff",
         copernicus=PYPSAEARTH_DIR + "data/copernicus/PROBAV_LC100_global_v3.0.1_2019-nrt_Discrete-Classification-map_EPSG-4326.tif",
         gebco=PYPSAEARTH_DIR + "data/gebco/GEBCO_2025_sub_ice.nc",
         country_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/country_shapes.geojson",
         offshore_shapes=PYPSAEARTH_DIR + "resources/" + RDIR + "shapes/offshore_shapes.geojson",
-        hydro_capacities=PYPSAEARTH_DIR + "data/hydro_capacities.csv",
-        eia_hydro_generation=PYPSAEARTH_DIR + "data/eia_hydro_annual_generation.csv",
-        powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
         regions=lambda w: (
             PYPSAEARTH_DIR + "resources/" + RDIR + "bus_regions/regions_onshore.geojson"
             if w.technology in ("onwind", "solar", "hydro", "csp")
@@ -719,40 +798,76 @@ rule cluster_network:
         "scripts/cluster_network.py"
 
 
-rule augmented_line_connections:
+solar_rooftop_config = config["sector"]["solar_rooftop"]
+if isinstance(solar_rooftop_config, dict):
+    solar_rooftop_enable = (
+        solar_rooftop_config["enable"] and solar_rooftop_config["use_building_size"]
+    )
+    solar_rooftop_params = {
+        "solar_rooftop_enable": solar_rooftop_enable,
+        "install_ratio": solar_rooftop_config["install_ratio"],
+        "tolerance": solar_rooftop_config["tolerance"],
+    }
+else:
+    solar_rooftop_params = {}
+    solar_rooftop_enable = config["sector"]["solar_rooftop"]
+
+
+rule cluster_global_buildings:
     params:
-        lines=config["lines"],
-        augmented_line_connection=config["augmented_line_connection"],
-        hvdc_as_lines=config["electricity"]["hvdc_as_lines"],
-        electricity=config["electricity"],
-        costs=config["costs"],
+        **solar_rooftop_params,
+        crs=config["crs"],
     input:
-        tech_costs=COSTS,
-        network="networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
-        regions_onshore=PYPSAEARTH_DIR + "resources/"
+        country_buildings="data/global_buildings/{country}_global_buildings_raw.parquet",
+        regions_onshore="resources/"
         + RDIR
         + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
-        regions_offshore=PYPSAEARTH_DIR + "resources/"
-        + RDIR
-        + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
     output:
-        network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
-    log:
-        "logs/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}.log",
-    benchmark:
-        "benchmarks/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}"
-    threads: 1
-    resources:
-        mem_mb=3000,
+        solar_rooftop_layout=branch(
+            solar_rooftop_enable,
+            "resources/"
+            + RDIR
+            + "solar_rooftop/solar_rooftop_layout_elec_s{simpl}_{clusters}_{country}.csv",
+        ),
     script:
-        "scripts/augmented_line_connections.py"
+        "scripts/cluster_global_buildings.py"
+
+
+if config["augmented_line_connection"].get("add_to_snakefile") == True:
+
+    rule augmented_line_connections:
+        params:
+            lines=config["lines"],
+            augmented_line_connection=config["augmented_line_connection"],
+            hvdc_as_lines=config["electricity"]["hvdc_as_lines"],
+            electricity=config["electricity"],
+            costs=config["costs"],
+        input:
+            tech_costs=COSTS,
+            network="networks/" + RDIR + "elec_s{simpl}_{clusters}_pre_augmentation.nc",
+            regions_onshore=PYPSAEARTH_DIR + "resources/"
+            + RDIR
+            + "bus_regions/regions_onshore_elec_s{simpl}_{clusters}.geojson",
+            regions_offshore=PYPSAEARTH_DIR + "resources/"
+            + RDIR
+            + "bus_regions/regions_offshore_elec_s{simpl}_{clusters}.geojson",
+        output:
+            network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
+        log:
+            "logs/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}.log",
+        benchmark:
+            "benchmarks/" + RDIR + "augmented_line_connections/elec_s{simpl}_{clusters}"
+        threads: 1
+        resources:
+            mem_mb=3000,
+        script:
+            "scripts/augmented_line_connections.py"
 
 
 rule add_extra_components:
     params:
         transmission_efficiency=config["sector"]["transmission_efficiency"],
     input:
-        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}.nc",
         tech_costs=COSTS,
     output:
@@ -827,8 +942,8 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == False:
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
+            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             "results/" + RDIR + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         log:
@@ -895,10 +1010,10 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == True:
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network="networks/"
             + RDIR
             + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{unc}.nc",
+            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             "results/"
             + RDIR
@@ -1052,14 +1167,6 @@ if not config["custom_data"]["gas_network"]:
         params:
             gas_config=config["sector"]["gas"],
             alternative_clustering=config["cluster_options"]["alternative_clustering"],
-            countries_list=config["countries"],
-            layer_id=config["build_shape_options"]["gadm_layer_id"],
-            update=config["build_shape_options"]["update_file"],
-            out_logging=config["build_shape_options"]["out_logging"],
-            year=config["build_shape_options"]["year"],
-            nprocesses=config["build_shape_options"]["nprocesses"],
-            contended_flag=config["build_shape_options"]["contended_flag"],
-            geo_crs=config["crs"]["geo_crs"],
             custom_gas_network=config["custom_data"]["gas_network"],
         input:
             regions_onshore=PYPSAEARTH_DIR + "resources/"
@@ -1129,6 +1236,16 @@ rule prepare_sector_network:
     input:
         **branch(sector_enable["land_transport"], TRANSPORT),
         **branch(sector_enable["heat"], HEAT),
+        **branch(
+            solar_rooftop_enable,
+            {
+                f"solar_rooftop_layout_{country}": "resources/"
+                + RDIR
+                + "solar_rooftop/solar_rooftop_layout_elec_s{simpl}_{clusters}_"
+                + f"{country}.csv"
+                for country in config["countries"]
+            },
+        ),
         network=RESDIR
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_presec.nc",
         costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
@@ -1139,7 +1256,6 @@ rule prepare_sector_network:
             + SECDIR
             + "demand/heat/nodal_energy_heat_totals_{demand}_s{simpl}_{clusters}_{planning_horizons}.csv",
         ),
-        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         clustered_pop_layout=PYPSAEARTH_DIR + "resources/"
         + SECDIR
         + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
@@ -1245,7 +1361,6 @@ rule add_export:
         snapshots=config["snapshots"],
         costs=config["costs"],
     input:
-        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         export_ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "export_ports.csv",
         costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
         ship_profile=PYPSAEARTH_DIR + "resources/" + SECDIR + "ship_profile_{h2export}TWh.csv",
@@ -1283,7 +1398,6 @@ rule override_respot:
             for discountrate in config["costs"]["discountrate"]
             for planning_horizons in config["scenario"]["planning_horizons"]
         },
-        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         energy_totals=PYPSAEARTH_DIR + "resources/"
         + SECDIR
@@ -1710,25 +1824,28 @@ if config["foresight"] == "overnight":
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             # network=RESDIR
             # + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}.nc",
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
+            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             RESDIR
             + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
         shadow:
             "copy-minimal" if os.name == "nt" else "shallow"
         log:
-            solver=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_solver.log",
-            python=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_python.log",
-            memory=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_memory.log",
+            solver="logs/"
+            + SECDIR
+            + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_solver.log",
+            python="logs/"
+            + SECDIR
+            + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_python.log",
+            memory="logs/"
+            + SECDIR
+            + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_memory.log",
         threads: 25
         resources:
             mem_mb=config["solving"]["mem"],
@@ -1752,7 +1869,6 @@ rule make_sector_summary:
         h2export_qty=config["export"]["h2export"],
         foresight=config["foresight"],
     input:
-        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         networks=expand(
             RESDIR
             + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
@@ -1852,7 +1968,6 @@ rule make_statistics:
 
 rule plot_sector_network:
     input:
-        overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         network=RESDIR
         + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
     output:
@@ -2181,11 +2296,11 @@ if config["foresight"] == "myopic" and config['enable_sector_coupling']:
             augmented_line_connection=config["augmented_line_connection"],
             policy_config=config["policy_config"],
         input:
-            overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network=RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
             costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
+            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             network=RESDIR
             + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
@@ -2194,12 +2309,15 @@ if config["foresight"] == "myopic" and config['enable_sector_coupling']:
         shadow:
             "copy-minimal" if os.name == "nt" else "shallow"
         log:
-            solver=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_solver.log",
-            python=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_python.log",
-            memory=RESDIR
-            + "logs/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_memory.log",
+            solver="logs/"
+            + SECDIR
+            + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_solver.log",
+            python="logs/"
+            + SECDIR
+            + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_python.log",
+            memory="logs/"
+            + SECDIR
+            + "solve_network/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export_memory.log",
         threads: 25
         resources:
             mem_mb=config["solving"]["mem"],

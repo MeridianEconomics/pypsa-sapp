@@ -86,7 +86,7 @@ import numpy as np
 import pandas as pd
 import pypsa
 import xarray as xr
-from _helpers import configure_logging, create_logger, override_component_attrs
+from _helpers import configure_logging, create_logger
 from linopy import merge
 from pypsa.descriptors import get_switchable_as_dense as get_as_dense
 from pypsa.optimization.abstract import optimize_transmission_expansion_iteratively
@@ -196,6 +196,8 @@ def add_CCL_constraints(n, config):
     Add minimum and maximum levels of generator nominal capacity per carrier
     for individual countries. Opts and path for agg_p_nom_minmax.csv must be defined
     in config.yaml. Default file is available at data/agg_p_nom_minmax.csv.
+    Parameter include_existing in config.yaml decides whether existing capacities
+    are considered in the CCL constraints. Default is false.
 
     Parameters
     ----------
@@ -205,14 +207,18 @@ def add_CCL_constraints(n, config):
     Example
     -------
     scenario:
-        opts: [Co2L-CCL-24H]
+        opts: [CCL-Co2L-24H]
     electricity:
-        agg_p_nom_limits: data/agg_p_nom_minmax.csv
+        agg_p_nom_limits:
+            file: data/agg_p_nom_minmax.csv
+            include_existing: false
     """
     agg_p_nom_limits = config["electricity"].get("agg_p_nom_limits")
 
     try:
-        agg_p_nom_minmax = pd.read_csv(agg_p_nom_limits, index_col=list(range(2)))
+        agg_p_nom_minmax = pd.read_csv(
+            snakemake.input.agg_p_nom_minmax, index_col=list(range(2)), header=[0, 1]
+        )[snakemake.wildcards.planning_horizons]
     except IOError:
         logger.exception(
             "Need to specify the path to a .csv file containing "
@@ -223,33 +229,68 @@ def add_CCL_constraints(n, config):
         "Adding per carrier generation capacity constraints for " "individual countries"
     )
 
-    gen_country = n.generators.bus.map(n.buses.country)
     capacity_variable = n.model["Generator-p_nom"]
 
-    lhs = []
+    # get carriers to which CCL constraints apply
+    ccl_carriers = agg_p_nom_minmax.index.get_level_values(1).unique()
     ext_carriers = n.generators.query("p_nom_extendable").carrier.unique()
-    for c in ext_carriers:
-        ext_carrier = n.generators.query("p_nom_extendable and carrier == @c")
-        country_grouper = (
-            ext_carrier.bus.map(n.buses.country)
-            .rename_axis("Generator-ext")
-            .rename("country")
+    ccl_carriers = ccl_carriers[ccl_carriers.isin(ext_carriers)]
+
+    # If no CCL carriers found, return early
+    if not ccl_carriers.any():
+        logger.info(
+            "No CCL carriers found that are extendable. Skipping CCL constraints."
         )
-        ext_carrier_per_country = capacity_variable.loc[
-            country_grouper.index
-        ].groupby_sum(country_grouper)
-        lhs.append(ext_carrier_per_country)
-    lhs = merge(lhs, dim=pd.Index(ext_carriers, name="carrier"))
+        return
 
-    min_matrix = agg_p_nom_minmax["min"].to_xarray().unstack().reindex_like(lhs)
-    max_matrix = agg_p_nom_minmax["max"].to_xarray().unstack().reindex_like(lhs)
+    # Get extendable generators for relevant carriers
+    gens = n.generators[n.generators.carrier.isin(ccl_carriers)]
+    gens = gens.rename_axis(index="Generator-ext")
 
-    n.model.add_constraints(
-        lhs >= min_matrix, name="agg_p_nom_min", mask=min_matrix.notnull()
+    # Prepare country and carrier grouper
+    grouper = pd.concat(
+        [gens.bus.map(n.buses.country).rename("country"), gens.carrier], axis=1
     )
-    n.model.add_constraints(
-        lhs <= max_matrix, name="agg_p_nom_max", mask=max_matrix.notnull()
-    )
+
+    # Prepare LHS
+    lhs = capacity_variable.groupby(grouper).sum()
+
+    # Obtain existing capacities
+    existing_capacities = gens.p_nom.groupby(
+        [grouper["country"], grouper["carrier"]]
+    ).sum()
+
+    # Obtain minimum and maximum constraint limits
+    min_values = agg_p_nom_minmax["min"]
+    max_values = agg_p_nom_minmax["max"]
+
+    # Adjust limits if existing capacities are considered
+    if agg_p_nom_limits.get("include_existing", False):
+        min_values = (min_values - existing_capacities).clip(lower=0)
+        max_values = (max_values - existing_capacities).clip(lower=0)
+        logger.info(
+            f"Considered existing capacities in CCL constraints for carrier {c}."
+        )
+
+    # Convert limits to xarray for masking
+    min_values = xr.DataArray(min_values.dropna()).rename(dim_0="group")
+    max_values = xr.DataArray(max_values.dropna()).rename(dim_0="group")
+
+    # Valid constraints
+    valid_min_index = min_values.indexes["group"].intersection(lhs.indexes["group"])
+    valid_max_index = max_values.indexes["group"].intersection(lhs.indexes["group"])
+
+    if not valid_min_index.empty:
+        n.model.add_constraints(
+            lhs.sel(group=valid_min_index) >= min_values.loc[valid_min_index],
+            name="agg_p_nom_min",
+        )
+
+    if not valid_max_index.empty:
+        n.model.add_constraints(
+            lhs.sel(group=valid_max_index) <= max_values.loc[valid_max_index],
+            name="agg_p_nom_max",
+        )
 
 
 def add_EQ_constraints(n, o, scaling=1e-1):
@@ -275,7 +316,7 @@ def add_EQ_constraints(n, o, scaling=1e-1):
     to produce on average at least 70% of its consumption; EQ0.7 demands
     each node to produce on average at least 70% of its consumption.
     """
-    float_regex = "[0-9]*\.?[0-9]+"
+    float_regex = r"[0-9]*\.?[0-9]+"
     level = float(re.findall(float_regex, o)[0])
     if o[-1] == "c":
         ggrouper = n.generators.bus.map(n.buses.country)
@@ -620,7 +661,7 @@ def add_land_use_constraint(n):
 def _add_land_use_constraint(n):
     # warning: this will miss existing offwind which is not classed AC-DC and has carrier 'offwind'
 
-    for carrier in ["solar", "onwind", "offwind-ac", "offwind-dc"]:
+    for carrier in ["solar", "solar rooftop", "onwind", "offwind-ac", "offwind-dc"]:
         existing = (
             n.generators.loc[n.generators.carrier == carrier, "p_nom"]
             .groupby(n.generators.bus.map(n.buses.location))
@@ -639,7 +680,7 @@ def _add_land_use_constraint_m(n):
     grouping_years = snakemake.config["existing_capacities"]["grouping_years"]
     current_horizon = snakemake.wildcards.planning_horizons
 
-    for carrier in ["solar", "onwind", "offwind-ac", "offwind-dc"]:
+    for carrier in ["solar", "solar rooftop", "onwind", "offwind-ac", "offwind-dc"]:
         existing = n.generators.loc[n.generators.carrier == carrier, "p_nom"]
         ind = list(
             set(
@@ -770,7 +811,7 @@ def extra_functionality(n, snapshots):
         add_operational_reserve_margin(n, snapshots, config)
     for o in opts:
         if "RES" in o:
-            res_share = float(re.findall("[0-9]*\.?[0-9]+$", o)[0])
+            res_share = float(re.findall(r"[0-9]*\.?[0-9]+$", o)[0])
             add_RES_constraints(n, res_share, config)
     for o in opts:
         if "EQ" in o:
@@ -844,13 +885,13 @@ if __name__ == "__main__":
     opts = snakemake.wildcards.opts.split("-")
     solve_opts = snakemake.config["solving"]["options"]
 
-    overrides = override_component_attrs(snakemake.input.overrides)
-    n = pypsa.Network(snakemake.input.network, override_component_attrs=overrides)
+    n = pypsa.Network(snakemake.input.network)
 
     if snakemake.params.augmented_line_connection.get("add_to_snakefile"):
-        n.lines.loc[n.lines.index.str.contains("new"), "s_nom_min"] = (
-            snakemake.params.augmented_line_connection.get("min_expansion")
-        )
+        if not n.lines.empty:
+            n.lines.loc[n.lines.index.str.contains("new"), "s_nom_min"] = (
+                snakemake.params.augmented_line_connection.get("min_expansion")
+            )
 
     if (
         snakemake.config["custom_data"]["add_existing"]

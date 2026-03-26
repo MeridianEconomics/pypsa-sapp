@@ -200,12 +200,13 @@ def p_set_from_scaling(col, scaling, energy_totals, nhours):
 
 def add_co2_budget(n, co2_budget, investment_year, elec_opts):
     # Check if CO2Limit already exists
-    if "CO2Limit" in n.global_constraints.index and co2_budget["override_co2opt"]:
-        logger.warning("CO2Limit already exists, value will be overwritten.")
-        n.global_constraints.drop(index="CO2Limit", inplace=True)
-    else:
-        logger.info("CO2Limit already exists, value will not be overwritten.")
-        return
+    if "CO2Limit" in n.global_constraints.index:
+        if co2_budget["override_co2opt"]:
+            logger.warning("CO2Limit already exists, value will be overwritten.")
+            n.global_constraints.drop(index="CO2Limit", inplace=True)
+        else:
+            logger.info("CO2Limit already exists, value will not be overwritten.")
+            return
 
     # Get base year emission factor
     factor = (
@@ -232,6 +233,7 @@ def add_co2_budget(n, co2_budget, investment_year, elec_opts):
     logger.info(
         f"Annual emissions for {investment_year} set to {annual_emissions / 1e6:.2f} MtCO₂-eq/year."
     )
+
     add_co2limit(n, annual_emissions, Nyears)
 
 
@@ -294,7 +296,7 @@ if __name__ == "__main__":
     # clustering of regions must be double checked.. refer to regions onshore
 
     # Add location. TODO: move it into pypsa-earth
-    n.buses.location = n.buses.index
+    n.buses.loc[:, "location"] = n.buses.index
 
     # Set carrier of AC loads
     existing_nodes = [node for node in acnodes if node in n.loads.index]

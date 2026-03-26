@@ -32,7 +32,6 @@ from _helpers import (
     aggregate_p,
     configure_logging,
     create_logger,
-    load_network_for_plots,
     rename_techs,
 )
 from matplotlib.legend_handler import HandlerPatch
@@ -1038,12 +1037,7 @@ if __name__ == "__main__":
         if len(map_boundaries) != 4:
             map_boundaries = africa_shape.boundary.bounds
 
-        n = load_network_for_plots(
-            snakemake.input.network,
-            snakemake.input.tech_costs,
-            snakemake.params.costs,
-            snakemake.params.electricity,
-        )
+        n = pypsa.Network(snakemake.input.network)
 
         scenario_opts = snakemake.wildcards.opts.split("-")
 

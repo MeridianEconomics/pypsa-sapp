@@ -172,8 +172,8 @@ def filter_gadm(
 def get_GADM_layer(
     country_list,
     layer_id,
-    geo_crs,
-    contended_flag,
+    geo_crs="EPSG:4326",
+    contended_flag="set_by_country",
     update=False,
     outlogging=False,
 ):
@@ -265,7 +265,15 @@ def _simplify_polys(polys, minarea=0.01, tolerance=0.01, filterremote=False):
     return polys.simplify(tolerance=tolerance)
 
 
-def countries(countries, geo_crs, contended_flag, update=False, out_logging=False):
+def countries(
+    countries,
+    geo_crs,
+    contended_flag,
+    update=False,
+    out_logging=False,
+    tolerance=0.01,
+    minarea=0.01,
+):
     "Create country shapes"
 
     if out_logging:
@@ -286,7 +294,10 @@ def countries(countries, geo_crs, contended_flag, update=False, out_logging=Fals
     df_countries.rename(columns={"GID_0": "name"}, inplace=True)
 
     # set index and simplify polygons
-    ret_df = df_countries.set_index("name")["geometry"].map(_simplify_polys)
+    ret_df = df_countries.set_index("name")["geometry"].map(
+        lambda x: _simplify_polys(x, tolerance=tolerance, minarea=minarea)
+    )
+
     # there may be "holes" in the countries geometry which cause troubles along the workflow
     # e.g. that is the case for enclaves like Dahagram–Angarpota for IN/BD
     ret_df = ret_df.make_valid()
@@ -341,22 +352,55 @@ def load_EEZ(countries_codes, geo_crs, EEZ_gpkg=PYPSAEARTH_DIR+"data/eez/eez_v11
 
 
 def eez(
-    countries,
-    geo_crs,
-    country_shapes,
-    EEZ_gpkg,
-    out_logging=False,
-    distance=0.01,
-    minarea=0.01,
-    tolerance=0.01,
-    simplify_gadm=True,
-):
+    countries: list[str],
+    geo_crs: str,
+    country_shapes: gpd.GeoSeries | gpd.GeoDataFrame,
+    EEZ_gpkg: str,
+    out_logging: bool = False,
+    distance: float = 0.0,
+    minarea: float = 0.01,
+    tolerance: float = 0.01,
+    simplify_gadm: bool = True,
+) -> gpd.GeoDataFrame:
     """
-    Creates offshore shapes by buffer smooth countryshape (=offset country
-    shape) and differ that with the offshore shape which leads to for instance
-    a 100m non-build coastline.
-    """
+    Build offshore (EEZ) shapes for the requested countries.
 
+    The function loads EEZ geometries, unions them per country, and optionally
+    simplifies them. If ``distance`` is non-zero, the onshore country
+    shapes are buffered and subtracted from EEZ geometries to create an
+    "offshore-only" region (e.g. to enforce a non-build coastal strip).
+
+    Parameters
+    ----------
+    countries : list[str]
+        Two-letter ISO country codes to process (e.g. ``["DE", "FR"]``).
+    geo_crs : str
+        CRS used for geometric operations, passed to GeoPandas (e.g.
+        ``"EPSG:4326"``). Note: buffering distances depend on the CRS units.
+    country_shapes : geopandas.GeoSeries or geopandas.GeoDataFrame
+        Country geometries indexed by the same two-letter ISO codes. Must be in ``geo_crs``.
+    EEZ_gpkg : str
+        Path to the Marine Regions *World EEZ v11* geopackage.
+    out_logging : bool, default False
+        If True, emits progress information via the module logger.
+    distance : float, default 0.0
+        Buffer distance applied to ``country_shapes`` before subtraction from
+        the EEZ geometries. Units are CRS-dependent.
+    minarea : float, default 0.01
+        Minimum polygon area threshold used by the simplification routine.
+    tolerance : float, default 0.01
+        Tolerance passed to Shapely ``simplify`` via ``_simplify_polys``.
+    simplify_gadm : bool, default True
+        If True, simplify and validate geometries before and after the coastal
+        subtraction.
+
+    Returns
+    -------
+    geopandas.GeoDataFrame
+        Offshore EEZ geometries indexed by country code (column ``name`` as
+        index, geometry column ``geometry``). Empty/invalid geometries are
+        removed.
+    """
     if out_logging:
         logger.info("Stage 2 of 5: Create offshore shapes")
 
@@ -1245,6 +1289,8 @@ def gadm(
     year=2020,
     nprocesses=None,
     simplify_gadm=True,
+    tolerance=0.01,
+    minarea=0.01,
 ):
     if out_logging:
         logger.info("Stage 3 of 5: Creation GADM GeoDataFrame")
@@ -1296,7 +1342,9 @@ def gadm(
     df_gadm.set_index("GADM_ID", inplace=True)
 
     if simplify_gadm:
-        df_gadm["geometry"] = df_gadm["geometry"].map(_simplify_polys)
+        df_gadm["geometry"] = df_gadm["geometry"].map(
+            lambda x: _simplify_polys(x, tolerance=tolerance, minarea=minarea)
+        )
     df_gadm.geometry = df_gadm.geometry.apply(
         lambda r: make_valid(r) if not r.is_valid else r
     )
@@ -1389,7 +1437,9 @@ if __name__ == "__main__":
     contended_flag = snakemake.params.build_shape_options["contended_flag"]
     worldpop_method = snakemake.params.build_shape_options["worldpop_method"]
     gdp_method = snakemake.params.build_shape_options["gdp_method"]
+    tolerance = snakemake.params.build_shape_options["simplify_tolerance"]
     simplify_gadm = snakemake.params.build_shape_options["simplify_gadm"]
+    minarea = snakemake.params.build_shape_options["minarea"]
 
     country_shapes = countries(
         countries_list,
@@ -1397,11 +1447,19 @@ if __name__ == "__main__":
         contended_flag,
         update,
         out_logging,
+        tolerance=tolerance,
     )
     country_shapes.to_file(snakemake.output.country_shapes)
 
     offshore_shapes = eez(
-        countries_list, geo_crs, country_shapes, EEZ_gpkg, out_logging, simplify_gadm
+        countries_list,
+        geo_crs,
+        country_shapes,
+        EEZ_gpkg,
+        out_logging=out_logging,
+        tolerance=tolerance,
+        minarea=minarea,
+        simplify_gadm=simplify_gadm,
     )
 
     offshore_shapes.reset_index().to_file(snakemake.output.offshore_shapes)
@@ -1424,6 +1482,8 @@ if __name__ == "__main__":
         year,
         nprocesses=nprocesses,
         simplify_gadm=simplify_gadm,
+        tolerance=tolerance,
+        minarea=minarea,
     )
 
     save_to_geojson(gadm_shapes, out.gadm_shapes)

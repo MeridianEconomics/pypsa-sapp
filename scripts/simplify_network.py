@@ -144,7 +144,12 @@ def simplify_network_to_base_voltage(n, linetype, base_voltage):
     # Replace transformers by lines
     trafo_map = pd.Series(n.transformers.bus1.values, n.transformers.bus0.values)
     trafo_map = trafo_map[~trafo_map.index.duplicated(keep="first")]
-    several_trafo_b = trafo_map.isin(trafo_map.index)
+    several_trafo_b = trafo_map.isin(trafo_map.index) & (trafo_map != trafo_map.index)
+    while several_trafo_b.any():
+        trafo_map[several_trafo_b] = trafo_map[several_trafo_b].map(trafo_map)
+        several_trafo_b = trafo_map.isin(trafo_map.index) & (
+            trafo_map != trafo_map.index
+        )
     trafo_map[several_trafo_b] = trafo_map[several_trafo_b].map(trafo_map)
     missing_buses_i = n.buses.index.difference(trafo_map.index)
     trafo_map = pd.concat([trafo_map, pd.Series(missing_buses_i, missing_buses_i)])
@@ -870,7 +875,7 @@ def merge_into_network(n, threshold, aggregation_strategies=dict()):
         busmap,
         aggregate_generators_weighted=True,
         aggregate_generators_carriers=None,
-        aggregate_one_ports=["Load", "StorageUnit"],
+        # aggregate_one_ports=["Load", "StorageUnit"],  # TODO: restore when PyPSA version is updated
         line_length_factor=1.0,
         line_strategies=line_strategies,
         bus_strategies=bus_strategies,
