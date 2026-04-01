@@ -785,6 +785,15 @@ if __name__ == "__main__":
                     # Hot fix for if excluder does not overlap with the regions - True for RSA offshore wind
                     logger.warning(f"Excluder does not overlap with the regions, for {snakemake.wildcards.technology}. Running with empty excluder.")
                     availability = cutout.availabilitymatrix(regions, excluder_empty, **kwargs)
+        
+        if snakemake.wildcards.technology == 'onwind':
+            for bus in availability.bus.values:
+                region_coords = availability.sel(bus = bus)
+                ds = cutout.data.wnd100m.sel(x=region_coords.x.values, y=region_coords.y.values).mean("time")
+                filter_wind_speed = np.quantile(ds.values, 0.9) # have this as setting in config
+                filtered_coords = xr.where(ds>=filter_wind_speed, 1, 0)
+                availability.loc[dict(bus=bus)] = availability.sel(bus = bus)*filtered_coords
+        
         area = cutout.grid.to_crs(area_crs).area / 1e6
         area = xr.DataArray(
             area.values.reshape(cutout.shape), [cutout.coords["y"], cutout.coords["x"]]
