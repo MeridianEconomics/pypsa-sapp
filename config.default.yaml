@@ -307,6 +307,7 @@ renewable:
     gwa_correction: 
       folder: resources/redz/era5_correction
       file: SAPP_wind-speed_100m.tif      # Can be downloaded for individual countries from https://globalwindatlas.info/en/download/gis-files
+    aggregation: ["quantile", 0.8]  # options of quantile or mean
     natura: true
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2

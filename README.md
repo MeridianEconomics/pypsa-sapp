@@ -26,6 +26,7 @@ This model is still being improved but the following features have been implemen
 
 - DC AC Ratio implemented for Solar PV
 - GWA correction added for Onwind to improve reflection of high resource wind speeds
+- Prioritising best wind sites within regions
 - Custom REDZ raster added to restrict Onwind and Solar PV development to specific, high resource, regions
 
 The additions needed in the config to implement the above are shown below. These changes are already implemented in the provided config files in SAPP/Configs/updated myopic model
@@ -41,6 +42,7 @@ renewable:
     gwa_correction: 
       folder: resources/redz/era5_correction
       file: SAPP_wind-speed_100m.tif      # Can be downloaded for individual countries from https://globalwindatlas.info/en/download/gis-files
+    aggregation: ["quantile", 0.8]  # options of quantile or mean
   solar:
     dc_ac_ratio: 1.25
     custom_redz_raster:

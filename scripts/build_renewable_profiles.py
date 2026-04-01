@@ -786,11 +786,11 @@ if __name__ == "__main__":
                     logger.warning(f"Excluder does not overlap with the regions, for {snakemake.wildcards.technology}. Running with empty excluder.")
                     availability = cutout.availabilitymatrix(regions, excluder_empty, **kwargs)
         
-        if snakemake.wildcards.technology == 'onwind':
+        if snakemake.wildcards.technology == 'onwind' and config["aggregation"][0] != 'mean':
             for bus in availability.bus.values:
                 region_coords = availability.sel(bus = bus)
                 ds = cutout.data.wnd100m.sel(x=region_coords.x.values, y=region_coords.y.values).mean("time")
-                filter_wind_speed = np.quantile(ds.values, 0.9) # have this as setting in config
+                filter_wind_speed = np.quantile(ds.values, config["aggregation"][1]) # have this as setting in config
                 filtered_coords = xr.where(ds>=filter_wind_speed, 1, 0)
                 availability.loc[dict(bus=bus)] = availability.sel(bus = bus)*filtered_coords
         
