@@ -14,9 +14,9 @@ If your resources and data for PyPSA-Earth sit in another directory and you woul
 
 export PYPSAEARTH_DIR="/insert/path/to/data/"
 
-To run the default config files, there are two options:
-- Copy the config file to the main directory and rename it config.yaml. In your terminal then run "snakemake -j10 solve_all_networks"
-- In your teminal run "snakemake -j10 solve_all_networks --configfile 'SAPP/Configs/_chosen config file name_.yaml'"
+To run the default myopic config files, there are two options:
+- Copy the config file to the main directory and rename it config.yaml. In your terminal then run "snakemake -j10 solve_elec_networks_myopic"
+- In your teminal run "snakemake -j10 solve_elec_networks_myopic --configfile 'SAPP/Configs/_chosen config file name_.yaml'"
 
 ## Key differences from PyPSA-Earth
 
