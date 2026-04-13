@@ -487,13 +487,13 @@ def attach_conventional_generators(
 
             if "p_max_pu" in electricity_config["outages"]["parameter"]:
                 scaling_index = electricity_config["outages"]["parameter"].index("p_max_pu")
-                outages_p_max_pu = outages.copy() * electricity_config["outages"]["scaling"][scaling_index]
+                outages_p_max_pu = (1 - outages.copy()) * electricity_config["outages"]["scaling"][scaling_index]
             else:
                 outages_p_max_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=1)
 
             if "p_min_pu" in electricity_config["outages"]["parameter"]:
                 scaling_index = electricity_config["outages"]["parameter"].index("p_min_pu")
-                outages_p_min_pu = outages.copy() * electricity_config["outages"]["scaling"][scaling_index]
+                outages_p_min_pu = (1 - outages.copy())  * electricity_config["outages"]["scaling"][scaling_index]
             else:
                 outages_p_min_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=0)
 

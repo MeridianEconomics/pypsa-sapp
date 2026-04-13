@@ -72,7 +72,7 @@ load_data_paths = get_load_paths_gegis(PYPSAEARTH_DIR + "data", config)
 if config["enable"].get("retrieve_cost_data", True):
     COSTS = PYPSAEARTH_DIR + "resources/" + RDIR + f"costs_{config['costs']['year']}.csv"
 else:
-    COSTS = PYPSAEARTH_DIR + "data/costs.csv"
+    COSTS = PYPSAEARTH_DIR + f"data/costs_{config['costs']['year']}.csv"
 ATLITE_NPROCESSES = config["atlite"].get("nprocesses", 4)
 
 
