@@ -478,31 +478,31 @@ def attach_conventional_generators(
         )
     )
 
-    if "outages" in electricity_config:
-        outages = pd.read_csv(PYPSAEARTH_DIR + electricity_config["outages"]["hourly_profiles_folder"] + '/' + electricity_config["outages"]["hourly_profiles_file"], index_col=[0])
-        outages = outages.rename(columns=dict(zip(ppl["name"], ppl.index)))
+    if "availability" in electricity_config:
+        hourly_availability = pd.read_csv(PYPSAEARTH_DIR + electricity_config["availability"]["hourly_profiles_folder"] + '/' + electricity_config["availability"]["hourly_profiles_file"], index_col=[0])
+        hourly_availability = hourly_availability.rename(columns=dict(zip(ppl["name"], ppl.index)))
 
-        if len(outages) == 8760:
-            outages.index = n.generators_t.p_max_pu.index
+        if len(hourly_availability) == 8760:
+            hourly_availability.index = n.generators_t.p_max_pu.index
 
-            if "p_max_pu" in electricity_config["outages"]["parameter"]:
-                scaling_index = electricity_config["outages"]["parameter"].index("p_max_pu")
-                outages_p_max_pu = (1 - outages.copy()) * electricity_config["outages"]["scaling"][scaling_index]
+            if "p_max_pu" in electricity_config["availability"]["parameter"]:
+                scaling_index = electricity_config["availability"]["parameter"].index("p_max_pu")
+                p_max_pu = hourly_availability * electricity_config["availability"]["scaling"][scaling_index]
             else:
-                outages_p_max_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=1)
+                p_max_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = hourly_availability.columns, data=1)
 
-            if "p_min_pu" in electricity_config["outages"]["parameter"]:
-                scaling_index = electricity_config["outages"]["parameter"].index("p_min_pu")
-                outages_p_min_pu = (1 - outages.copy())  * electricity_config["outages"]["scaling"][scaling_index]
+            if "p_min_pu" in electricity_config["availability"]["parameter"]:
+                scaling_index = electricity_config["availability"]["parameter"].index("p_min_pu")
+                p_min_pu = hourly_availability  * electricity_config["availability"]["scaling"][scaling_index]
             else:
-                outages_p_min_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=0)
+                p_min_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = hourly_availability.columns, data=0)
 
         else:
             logger.info(
                 "Profiles given are not hourly. Defaulting to 1 and 0 for p_max_pu and p_min_pu respectivly"
             )
-            outages_p_max_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=1)
-            outages_p_min_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = outages.columns, data=0)
+            p_max_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = hourly_availability.columns, data=1)
+            p_min_pu = pd.DataFrame(index = n.generators_t.p_max_pu.index, columns = hourly_availability.columns, data=0)
 
         n.madd(
             "Generator",
@@ -512,8 +512,8 @@ def attach_conventional_generators(
             p_nom_min=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
             p_nom=ppl.p_nom.where(ppl.carrier.isin(conventional_carriers), 0),
             p_nom_extendable=ppl.carrier.isin(extendable_carriers["Generator"]),
-            p_max_pu=outages_p_max_pu,
-            p_min_pu=outages_p_min_pu,
+            p_max_pu=p_max_pu,
+            p_min_pu=p_min_pu,
             efficiency=ppl.efficiency,
             marginal_cost=ppl.marginal_cost,
             capital_cost=ppl.capital_cost,
