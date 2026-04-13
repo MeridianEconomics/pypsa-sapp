@@ -1219,7 +1219,9 @@ rule prepare_sector_network:
         ),
         network=RESDIR
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_presec.nc",
-        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                if config["enable"].get("retrieve_cost_data", True) 
+                else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
         h2_cavern=PYPSAEARTH_DIR + "data/hydrogen_salt_cavern_potentials.csv",
         nodal_energy_totals=branch(
             sector_enable["rail_transport"] or sector_enable["agriculture"],
@@ -1283,7 +1285,9 @@ rule prepare_elec_network:
         co2_budget=config["co2_budget"],
     input:
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                if config["enable"].get("retrieve_cost_data", True) 
+                else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
         overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
         busmap_cluster=PYPSAEARTH_DIR + "resources/"
                     + RDIR
@@ -1333,7 +1337,9 @@ rule add_export:
         costs=config["costs"],
     input:
         export_ports=PYPSAEARTH_DIR + "resources/" + SECDIR + "export_ports.csv",
-        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                if config["enable"].get("retrieve_cost_data", True) 
+                else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
         ship_profile=PYPSAEARTH_DIR + "resources/" + SECDIR + "ship_profile_{h2export}TWh.csv",
         network=RESDIR
         + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}.nc",
@@ -1799,7 +1805,9 @@ if config["foresight"] == "overnight":
             # + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}.nc",
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
-            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                    if config["enable"].get("retrieve_cost_data", True) 
+                    else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
             agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
@@ -1847,7 +1855,9 @@ rule make_sector_summary:
             **config["costs"],
             **config["export"],
         ),
-        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                if config["enable"].get("retrieve_cost_data", True) 
+                else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
         plots=expand(
             RESDIR
             + "maps/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}-costs-all_{planning_horizons}_{discountrate}_{demand}_{h2export}export.pdf",
@@ -2084,7 +2094,9 @@ rule build_industry_demand:  #default data
         + SECDIR
         + "demand/base_industry_totals_{planning_horizons}_{demand}.csv",
         industrial_database=PYPSAEARTH_DIR + "data/industrial_database.csv",
-        costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+        costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                if config["enable"].get("retrieve_cost_data", True) 
+                else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
         industry_growth_cagr=PYPSAEARTH_DIR + "data/demand/industry_growth_cagr.csv",
     output:
         industrial_energy_demand_per_node=PYPSAEARTH_DIR + "resources/"
@@ -2169,7 +2181,9 @@ if config["foresight"] == "myopic" and config['enable_sector_coupling']:
             # clustered_pop_layout="resources/"
             # + SECDIR
             # + "population_shares/pop_layout_elec_s{simpl}_{clusters}_{planning_horizons}.csv",
-            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                    if config["enable"].get("retrieve_cost_data", True) 
+                    else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
         output:
             RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
@@ -2230,7 +2244,9 @@ if config["foresight"] == "myopic" and config['enable_sector_coupling']:
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
             network_p=solved_previous_horizon,  #solved network at previous time step
-            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                    if config["enable"].get("retrieve_cost_data", True) 
+                    else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             cop_soil_total=PYPSAEARTH_DIR + "resources/"
             + SECDIR
             + "cops/cop_soil_total_elec_s{simpl}_{clusters}_{planning_horizons}.nc",
@@ -2269,7 +2285,9 @@ if config["foresight"] == "myopic" and config['enable_sector_coupling']:
         input:
             network=RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
-            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                    if config["enable"].get("retrieve_cost_data", True) 
+                    else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
             agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
@@ -2325,7 +2343,9 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             busmap=PYPSAEARTH_DIR + "resources/"
             + RDIR
             + "bus_regions/busmap_elec_s{simpl}_{clusters}.csv",
-            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                    if config["enable"].get("retrieve_cost_data", True) 
+                    else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
         output:
             RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
@@ -2384,7 +2404,9 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             network=RESDIR
             + "prenetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
             network_p=solved_previous_horizon,  #solved network at previous time step
-            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                    if config["enable"].get("retrieve_cost_data", True) 
+                    else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             pm_config="configs/powerplantmatching_config.yaml",
             powerplants=PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv"
         output:
@@ -2416,7 +2438,9 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             network=RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
-            costs=PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv",
+            costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
+                    if config["enable"].get("retrieve_cost_data", True) 
+                    else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
         output:
             network=RESDIR
