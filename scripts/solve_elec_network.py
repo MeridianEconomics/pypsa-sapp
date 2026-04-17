@@ -95,6 +95,8 @@ from pypsa.optimization.optimize import optimize
 logger = create_logger(__name__)
 pypsa.pf.logger.setLevel(logging.WARNING)
 
+PYPSAEARTH_DIR = os.environ.get("PYPSAEARTH_DIR")
+
 
 def get_load_shedding_capacity(n, safety_margin=1.2):
     """
@@ -213,7 +215,7 @@ def add_CCL_constraints(n, config):
             file: data/agg_p_nom_minmax.csv
             include_existing: false
     """
-    agg_p_nom_limits = config["electricity"].get("agg_p_nom_limits")
+    agg_p_nom_limits = PYPSAEARTH_DIR + config["electricity"].get("agg_p_nom_limits")
 
     try:
         agg_p_nom_minmax = pd.read_csv(
