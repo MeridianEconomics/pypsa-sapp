@@ -219,17 +219,17 @@ electricity:
     Store: []
     Link: [] # H2 pipeline
 
-  powerplants_filter: (DateOut >= 2030 or DateOut != DateOut)
+  powerplants_filter: (DateOut > 2030 or DateOut != DateOut)
   custom_powerplants: replace #  "false" use only powerplantmatching (ppm) data, "merge" combines ppm and custom powerplants, "replace" use only custom powerplants
 
-  outages:
-    hourly_profiles_folder: resources/outages 
+  availability:
+    hourly_profiles_folder: resources/availability 
     hourly_profiles_file: 2030.csv # index = snapshots, columns = station names that match Name in powerplantmatching
     parameter: [p_max_pu, p_min_pu] # options [p_max_pu, p_min_pu]
     scaling: [1, 0.65]
 
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
-  renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro]
+  renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro, csp]
 
   estimate_renewable_capacities:
     stats: "irena" # False, = greenfield expansion, 'irena' uses IRENA stats to add expansion limits
@@ -259,6 +259,7 @@ lines:
   s_nom_max_min: -.inf
   length_factor: 1.25
   under_construction: "zero" # 'zero': set capacity to zero, 'remove': remove, 'keep': with full capacity
+  infinite_grid: True
 
 links:
   p_max_pu: 1.0

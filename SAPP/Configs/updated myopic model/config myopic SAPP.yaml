@@ -31,7 +31,7 @@ countries: ["AO", "BW", "CD", "SZ", "LS", "MW", "MZ", "NA", "ZA", "TZ", "ZM", "Z
 enable:
   retrieve_databundle: false #  Recommended 'true', for the first run. Otherwise data might be missing.
   retrieve_databundle_sector: true
-  retrieve_cost_data: true # true: retrieves cost data from technology data and saves in resources/costs.csv, false: uses cost data in data/costs.csv
+  retrieve_cost_data: false # true: retrieves cost data from technology data and saves in resources/costs.csv, false: uses cost data in data/costs.csv
   download_osm_data: false # If 'true', OpenStreetMap data will be downloaded for the above given countries
   build_natura_raster: false # If True, then an exclusion raster will be build
   build_cutout: false
@@ -65,8 +65,8 @@ scenario:
   - "AB"
 
 snapshots:
-  start: "2013-01-01"
-  end: "2014-01-01"
+  start: "2018-01-01"
+  end: "2019-01-01"
   inclusive: "left" # end is not inclusive
 
 # definition of the Coordinate Reference Systems
@@ -172,7 +172,7 @@ base_network:
 
 load_options:
   ssp: "ssp-sapp" #"ssp2-2.6" #"ssp-sapp" # shared socio-economic pathway (GDP and population growth) scenario to consider
-  weather_year: 2013 # Load scenarios available with different weather year (different renewable potentials)
+  weather_year: 2018 # Load scenarios available with different weather year (different renewable potentials)
   prediction_year: 2030 # Load scenarios available with different prediction year (GDP, population)
   scale: 1 # scales all load time-series, i.e. 2 = doubles load
 
@@ -216,20 +216,20 @@ electricity:
           # from the Generator list below, as these offshore wind technologies require coastline access.
     Generator: [solar, onwind, offwind-ac, offwind-dc, OCGT, CCGT]
     StorageUnit: [battery] # battery, H2
-    Store: [battery]
+    Store: []
     Link: [] # H2 pipeline
 
-  powerplants_filter: (DateOut >= 2030 or DateOut != DateOut)
-  custom_powerplants: false #  "false" use only powerplantmatching (ppm) data, "merge" combines ppm and custom powerplants, "replace" use only custom powerplants
+  powerplants_filter: (DateOut > 2030 or DateOut != DateOut)
+  custom_powerplants: replace #  "false" use only powerplantmatching (ppm) data, "merge" combines ppm and custom powerplants, "replace" use only custom powerplants
 
-  outages:
-    hourly_profiles_folder: resources/outages 
+  availability:
+    hourly_profiles_folder: resources/availability 
     hourly_profiles_file: 2030.csv # index = snapshots, columns = station names that match Name in powerplantmatching
     parameter: [p_max_pu, p_min_pu] # options [p_max_pu, p_min_pu]
-    scaling: [1, 0.6]
+    scaling: [1, 0.65]
 
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
-  renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro]
+  renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro, csp]
 
   estimate_renewable_capacities:
     stats: "irena" # False, = greenfield expansion, 'irena' uses IRENA stats to add expansion limits
@@ -259,6 +259,7 @@ lines:
   s_nom_max_min: -.inf
   length_factor: 1.25
   under_construction: "zero" # 'zero': set capacity to zero, 'remove': remove, 'keep': with full capacity
+  infinite_grid: False
 
 links:
   p_max_pu: 1.0
@@ -274,7 +275,7 @@ transformers:
 atlite:
   nprocesses: 4
   cutouts:
-    cutout-2013-era5:
+    cutout-2018-era5:
       module: era5
       dx: 0.3 # cutout resolution
       dy: 0.3 # cutout resolution
@@ -286,7 +287,7 @@ atlite:
 
 renewable:
   onwind:
-    cutout: cutout-2013-era5
+    cutout: cutout-2018-era5
     resource:
       method: wind
       turbine: Vestas_V112_3MW
@@ -318,13 +319,13 @@ renewable:
     gwa_correction: 
       folder: resources/redz/era5_correction
       file: SAPP_wind-speed_100m.tif      # Can be downloaded for individual countries from https://globalwindatlas.info/en/download/gis-files
-    aggregation: ["quantile", 0.8]  # options of quantile or mean
+    aggregation: ["quantile", 0.7]  # options of quantile or mean
     natura: true
     potential: simple # or conservative
     clip_p_max_pu: 1.e-2
     extendable: true
   offwind-ac:
-    cutout: cutout-2013-era5
+    cutout: cutout-2018-era5
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -342,7 +343,7 @@ renewable:
     clip_p_max_pu: 1.e-2
     extendable: true
   offwind-dc:
-    cutout: cutout-2013-era5
+    cutout: cutout-2018-era5
     resource:
       method: wind
       turbine: NREL_ReferenceTurbine_5MW_offshore
@@ -361,7 +362,7 @@ renewable:
     clip_p_max_pu: 1.e-2
     extendable: true
   solar:
-    cutout: cutout-2013-era5
+    cutout: cutout-2018-era5
     resource:
       method: pv
       panel: CSi
@@ -393,7 +394,7 @@ renewable:
     clip_p_max_pu: 1.e-2
     extendable: true
   hydro:
-    cutout: cutout-2013-era5
+    cutout: cutout-2018-era5
     hydrobasins_level: 6
     resource:
       method: hydro
@@ -415,7 +416,7 @@ renewable:
     multiplier: 1.1 # multiplier applied after the normalization of the hydro production; default 1.0
     hydro_min_inflow_pu: 1.0 # [hour] A threshold of energy to power ratio to classify hydro powerplants as reservoirs in case type is missed
   csp:
-    cutout: cutout-2013-era5
+    cutout: cutout-2018-era5
     resource:
       method: csp
       installation: SAM_solar_tower
@@ -440,7 +441,7 @@ renewable:
 costs:
   year: 2030 # cost file selection, i.e. costs_2030.csv in this case; reference year for costs is always 2020
   technology_data_version: v0.13.2
-  discountrate: [0.071] #, 0.086, 0.111]
+  discountrate: [0.096] #, 0.086, 0.111]
   country_specific_data: "" # (optional) Reference to the desired technology-data directory for techno-economic input data; Only "" and "US" supported, for other values check the technology-data output directory
   # Only needed if "US" is selected as `country_specific_data`, otherwise ignore
   cost_scenario: "moderate" # only used if `country_specific_data: "US"`; can be "moderate", "advanced" or "conservative"
@@ -451,7 +452,7 @@ costs:
   # Only needed if customized exchange rates are needed for future years
   future_exchange_rate_strategy: "latest" # reference uses the exchange rate from `reference_year` for all conversions, ensuring all costs are expressed in the same currency and year; "latest" uses the yearly average of the latest available exchange rates for the selected `output_currency`; "custom" allows to specify a `custom_future_exchange_rate` below
   custom_future_exchange_rate: None # if `future_exchange_rate_strategy: "custom"`, please insert here the desired output_currency-to-EUR exchange rate
-  rooftop_share: 0.14 # based on the potentials, assuming (0.1 kW/m2 and 10 m2/person)
+  rooftop_share: 0 # based on the potentials, assuming (0.1 kW/m2 and 10 m2/person)
   fill_values:
     FOM: 0
     VOM: 0
@@ -460,7 +461,7 @@ costs:
     investment: 0
     lifetime: 25
     CO2 intensity: 0
-    discount rate: 0.07
+    discount rate: 0.096
   marginal_cost: # EUR/MWh
     solar: 0.01
     onwind: 0.015
@@ -894,8 +895,8 @@ solving:
     copt-default:
       Threads: 8
       LpMethod: 4
-      Crossover: 1
-      BarHomogeneous: 0
+      Crossover: 0
+      BarHomogeneous: 1
       BarIterLimit: 50000
     cbc-default: {} # Used in CI
     glpk-default: {} # Used in CI

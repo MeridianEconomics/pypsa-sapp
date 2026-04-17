@@ -276,8 +276,8 @@ if __name__ == "__main__":
             clusters="10",
             ll="copt",
             opts="Ep-1h",
-            planning_horizons="2040",
-            discountrate=0.071,
+            planning_horizons="2030",
+            discountrate=0.096,
             demand="AB",
         )
 
@@ -347,6 +347,9 @@ if __name__ == "__main__":
     sanitize_carriers(n, snakemake.config)
     sanitize_locations(n)
 
+    if 'infinite_grid' in snakemake.params.lines and snakemake.params.lines['infinite_grid'] == True:
+        n.lines.s_nom_min = 100000
+    
     n.export_to_netcdf(snakemake.output[0])
 
     # TODO changes in case of myopic oversight

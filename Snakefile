@@ -1283,6 +1283,7 @@ rule prepare_elec_network:
         alternative_clustering=config["cluster_options"]["alternative_clustering"],
         foresight=config["foresight"],
         co2_budget=config["co2_budget"],
+        lines=config["lines"],
     input:
         network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 

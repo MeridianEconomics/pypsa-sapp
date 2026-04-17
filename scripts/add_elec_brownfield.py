@@ -145,6 +145,10 @@ def cap_exogenous_generators_and_storage_units(
         bus = bus.replace("_AC", "").replace("_DC", "")
         car = str(row["carrier"]).lower()
 
+        if car in bus:
+            bus = bus.replace(" " + car, "")
+            bus = bus.replace(car, "")
+
         cap = float(surviving_cap.get((bus, car), 0.0))
 
         if cap <= 0.0:
@@ -317,8 +321,8 @@ if __name__ == "__main__":
             clusters="10",
             ll="copt",
             opts="Ep-1h",
-            planning_horizons="2040",
-            discountrate=0.071,
+            planning_horizons="2035",
+            discountrate=0.096,
             demand="AB",
         )
 
