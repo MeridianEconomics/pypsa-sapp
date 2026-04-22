@@ -215,7 +215,7 @@ def add_CCL_constraints(n, config):
             file: data/agg_p_nom_minmax.csv
             include_existing: false
     """
-    agg_p_nom_limits = PYPSAEARTH_DIR + config["electricity"].get("agg_p_nom_limits")
+    agg_p_nom_limits = config["electricity"].get("agg_p_nom_limits")
 
     try:
         agg_p_nom_minmax = pd.read_csv(
@@ -873,13 +873,13 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "solve_elec_network_myopic",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
+            clusters="10",
+            ll="copt",
+            opts="CCL-Ep-1h",
             planning_horizons="2030",
-            discountrate="0.071",
+            discountrate="0.096",
             demand="AB",
-            configfile="config.tutorial.yaml",
+            configfile="config.yaml",
         )
 
     configure_logging(snakemake)

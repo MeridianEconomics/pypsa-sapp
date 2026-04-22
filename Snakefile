@@ -914,7 +914,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == False:
             policy_config=config["policy_config"],
         input:
             network="networks/" + RDIR + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
-            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
+            agg_p_nom_minmax= PYPSAEARTH_DIR + config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             "results/" + RDIR + "networks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}.nc",
         log:
@@ -984,7 +984,7 @@ if config["monte_carlo"]["options"].get("add_to_snakefile", False) == True:
             network="networks/"
             + RDIR
             + "elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{unc}.nc",
-            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
+            agg_p_nom_minmax= PYPSAEARTH_DIR + config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             "results/"
             + RDIR
@@ -1810,7 +1810,7 @@ if config["foresight"] == "overnight":
                     if config["enable"].get("retrieve_cost_data", True) 
                     else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
-            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
+            agg_p_nom_minmax= PYPSAEARTH_DIR + config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             RESDIR
             + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
@@ -2290,7 +2290,7 @@ if config["foresight"] == "myopic" and config['enable_sector_coupling']:
                     if config["enable"].get("retrieve_cost_data", True) 
                     else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
-            agg_p_nom_minmax=config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
+            agg_p_nom_minmax= PYPSAEARTH_DIR + config["electricity"]["agg_p_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             network=RESDIR
             + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{sopts}_{planning_horizons}_{discountrate}_{demand}_{h2export}export.nc",
@@ -2437,6 +2437,7 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             augmented_line_connection=config["augmented_line_connection"],
         input:
             overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
+            agg_p_nom_minmax=PYPSAEARTH_DIR + config["electricity"]["agg_p_nom_limits"]["file"],
             network=RESDIR
             + "prenetworks-brownfield/elec_s{simpl}_{clusters}_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
             costs=(PYPSAEARTH_DIR + "resources/" + RDIR + "costs_{planning_horizons}.csv" 
