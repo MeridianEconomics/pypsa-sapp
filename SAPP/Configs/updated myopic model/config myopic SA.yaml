@@ -56,7 +56,7 @@ scenario:
   simpl: [""]
   ll: ["copt"]
   clusters: [10]
-  opts: [Ep-1h] #[Co2L-3h]
+  opts: [CCL-Ep-1h] #[Co2L-3h]
   planning_horizons: [2030, 2035, 2040, 2045, 2050] # investment years for myopic and perfect; or costs year for overnight
   # - 2030
   sopts: 
