@@ -116,6 +116,14 @@ def add_lifetime_wind_solar(n, costs):
         gen_i = n.generators.index.str.contains(carrier)
         n.generators.loc[gen_i, "lifetime"] = costs.at[carrier, "lifetime"]
 
+def add_lifetime_ocgt_ccgt(n, costs):
+    """
+    Add lifetime for ocgt and ccgt generators.
+    """
+    for carrier in ["OCGT", "CCGT"]:
+        gen_i = n.generators.index.str.contains(carrier)
+        n.generators.loc[gen_i, "lifetime"] = costs.at[carrier, "lifetime"]
+
 
 
 def get(item, investment_year=None):
@@ -321,6 +329,7 @@ if __name__ == "__main__":
 
     if snakemake.params.foresight in ["myopic", "perfect"]:
         add_lifetime_wind_solar(n, costs)
+        add_lifetime_ocgt_ccgt(n, costs)
 
     # TODO logging
 
