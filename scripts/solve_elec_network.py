@@ -822,6 +822,16 @@ def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_lossy_bidirectional_link_constraints(n)
 
+def add_ramp_rates(n, tech, ramp_limit_up, ramp_limit_down):
+    i = n.generators.index[n.generators.carrier == tech]
+
+    n.generators.loc[i, "ramp_limit_up"] = ramp_limit_up
+    n.generators.loc[i, "ramp_limit_down"] = ramp_limit_down
+
+    logger.info(
+        f"Applied ramp limits to {len(i)} {i} generators: "
+        f"up={ramp_limit_up}, down={ramp_limit_down} per snapshot."
+    )
 
 
 def solve_network(n, config, solving, **kwargs):
@@ -888,6 +898,15 @@ if __name__ == "__main__":
     solve_opts = snakemake.config["solving"]["options"]
 
     n = pypsa.Network(snakemake.input.network)
+
+    if "ramp_limits" in snakemake.params.electricity:
+        for tech in snakemake.params.electricity["ramp_limits"].keys():
+            ramp_limits = snakemake.params.electricity["ramp_limits"][tech]
+            ramp_limit_up = ramp_limits.get("ramp_limit_up", 0.1)
+            ramp_limit_down = ramp_limits.get("ramp_limit_down", 0.1)
+
+            add_ramp_rates(n, tech, ramp_limit_up, ramp_limit_down)
+
 
     if snakemake.params.augmented_line_connection.get("add_to_snakefile"):
         if not n.lines.empty:

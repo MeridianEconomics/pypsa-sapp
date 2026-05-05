@@ -228,6 +228,11 @@ electricity:
     parameter: [p_max_pu, p_min_pu] # options [p_max_pu, p_min_pu]
     scaling: [1, 0.65]
 
+  ramp_limits:
+    coal:
+      ramp_limit_up: 0.5
+      ramp_limit_down: 0.5
+
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
   renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro, csp]
 
