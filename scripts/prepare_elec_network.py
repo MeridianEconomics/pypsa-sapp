@@ -343,12 +343,8 @@ if __name__ == "__main__":
             snakemake.params.electricity,
         )
 
-
     sanitize_carriers(n, snakemake.config)
     sanitize_locations(n)
-
-    if 'infinite_grid' in snakemake.params.lines and snakemake.params.lines['infinite_grid'] == True:
-        n.lines.s_nom_min = 100000
     
     n.export_to_netcdf(snakemake.output[0])
 

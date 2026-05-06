@@ -387,19 +387,11 @@ def _set_electrical_parameters_converters(links_config, converters):
 
 def _set_lines_s_nom_from_linetypes(n, lines_config):
     # Info: n.line_types is a lineregister from pypsa/pandapowers
-    if lines_config["limits"] == "thermal":
-        n.lines["s_nom"] = (
+    n.lines["s_nom"] = n.lines["s_nom"] = (
             np.sqrt(3)
             * n.lines["type"].map(n.line_types.i_nom)
             * n.lines.eval("v_nom * num_parallel")
         )
-    elif lines_config["limits"] in ["SIL", "St Clair"]:
-        # required for scaling SIL to single voltage level in simplify_network.py
-        x_per_length = n.lines["type"].map(n.line_types.x_per_length)
-        c_per_length = n.lines["type"].map(n.line_types.c_per_length)
-        b_per_length = 2* np.pi * lines_config["default_frequency"] * c_per_length *1e-9
-
-        n.lines["s_nom"] = n.lines["v_nom"]**2 / np.sqrt(x_per_length / b_per_length)
 
     # Re-define s_nom for DC lines
     n.lines.loc[n.lines["carrier"] == "DC", "s_nom"] = n.lines["type"].map(

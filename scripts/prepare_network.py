@@ -187,10 +187,46 @@ def add_emission_prices(n, emission_prices={"co2": 0.0}, exclude_co2=False):
     su_ep = n.storage_units.carrier.map(ep) / n.storage_units.efficiency_dispatch
     n.storage_units["marginal_cost"] += su_ep
 
+def apply_line_derating(n, SIL, stability_limit):
+    # Multiply the SIL with the St Clair curve to get the line limt as a function of distance
+    length = n.lines["length"]# in km
+    
+    if stability_limit == 'SIL':
+        return  SIL / n.lines["s_nom"]
+    elif stability_limit == 'SC':
+        st_clair = np.minimum(3 * SIL, SIL * 53.736 * (length ** -0.65)) # digitised from https://www.researchgate.net/figure/The-St-Clair-curve-as-based-on-the-results-of-14-retrieved-from-15-is-used-to_fig3_318692193
+        return st_clair / n.lines["s_nom"]
+    
 
-def set_line_s_max_pu(n, s_max_pu):
+def set_line_s_max_pu(n, s_max_pu, config, ll_factor):
+    
+    stability_limit=None
+    if "SIL" in ll_factor:
+        stability_limit = "SIL"
+    elif "SC" in ll_factor:
+        stability_limit = "SC"
+    
     n.lines["s_max_pu"] = s_max_pu
     logger.info(f"N-1 security margin of lines set to {s_max_pu}")
+
+    if stability_limit is not None:
+        # required for scaling SIL to single voltage level in simplify_network.py
+        x_per_length = n.lines["type"].map(n.line_types.x_per_length)
+        c_per_length = n.lines["type"].map(n.line_types.c_per_length)
+        b_per_length = (
+            2
+            * np.pi
+            * config["lines"]["default_frequency"]
+            * c_per_length
+            * 1e-9
+        )
+
+        SIL = n.lines["v_nom"]**2 / np.sqrt(x_per_length / b_per_length) * n.lines.num_parallel
+
+        stability_derating = apply_line_derating(n, SIL, stability_limit)
+        n.lines["s_max_pu"] = n.lines["s_max_pu"] * stability_derating
+        logger.info(f"Applied additional stability limit to lines according to {stability_limit.replace('SIL','Surge Impedance Loading').replace('SC','St Clair')} method.")
+
 
 
 def set_transmission_limit(n, ll_type, factor, costs, lines, links):
@@ -202,7 +238,9 @@ def set_transmission_limit(n, ll_type, factor, costs, lines, links):
         * n.lines.num_parallel
         * n.lines.bus0.map(n.buses.v_nom)
     )
+
     lines_s_nom = n.lines.s_nom.where(n.lines.type == "", _lines_s_nom)
+    
 
     col = "capital_cost" if ll_type == "c" else "length"
     ref = (
@@ -341,9 +379,9 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "prepare_network",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
+            clusters="10",
+            ll="clim-CP",
+            opts="Ep-1h",
             # configfile="test/config.sector.yaml",
         )
 
@@ -361,7 +399,7 @@ if __name__ == "__main__":
     )
     s_max_pu = snakemake.params.lines["s_max_pu"]
 
-    set_line_s_max_pu(n, s_max_pu)
+    set_line_s_max_pu(n, s_max_pu, snakemake.config, snakemake.wildcards.ll[1:])
 
     for o in opts:
         m = re.match(r"^\d+h$", o, re.IGNORECASE)
@@ -444,6 +482,10 @@ if __name__ == "__main__":
             break
 
     ll_type, factor = snakemake.wildcards.ll[0], snakemake.wildcards.ll[1:]
+    
+    if "lim" in factor: # defined allows capacity expansion and later under solve_elec_network.py enforce s_nom min/max constraints
+        factor = "opt"
+
     lines = snakemake.params.lines
     links = snakemake.params.links
     set_transmission_limit(n, ll_type, factor, costs, lines, links)

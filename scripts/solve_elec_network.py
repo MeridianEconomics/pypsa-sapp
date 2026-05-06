@@ -91,6 +91,7 @@ from linopy import merge
 from pypsa.descriptors import get_switchable_as_dense as get_as_dense
 from pypsa.optimization.abstract import optimize_transmission_expansion_iteratively
 from pypsa.optimization.optimize import optimize
+from add_electricity import load_costs, update_transmission_costs
 
 logger = create_logger(__name__)
 pypsa.pf.logger.setLevel(logging.WARNING)
@@ -135,7 +136,7 @@ def get_load_shedding_capacity(n, safety_margin=1.2):
     return load_shedding_p_nom
 
 
-def prepare_network(n, solve_opts, config):
+def prepare_network(n, opts, solve_opts, config):
     if "clip_p_max_pu" in solve_opts:
         for df in (
             n.generators_t.p_max_pu,
@@ -186,8 +187,15 @@ def prepare_network(n, solve_opts, config):
     if snakemake.config["foresight"] == "myopic":
         add_land_use_constraint(n)
 
+    if "lim" in snakemake.wildcards.ll[1:]:  # defined allows capacity expansion and later under solve_elec_network.py enforce s_nom min/max constraints
+        add_line_limit_constraints(n, snakemake.wildcards.ll[1:], snakemake.config)
+
+
     return n
 
+
+def force_transfer_model_only(n):
+    n.model.remove_constraints("Kirchhoff-Voltage-Law")
 
 def add_CCL_constraints(n, config):
     """
@@ -291,6 +299,57 @@ def add_CCL_constraints(n, config):
             lhs.sel(group=valid_max_index) <= max_values.loc[valid_max_index],
             name="agg_p_nom_max",
         )
+
+
+def add_line_limit_constraints(n, factor, config):
+    """
+
+    Add minimum and maximum line nominal capacity between buses levels. Opts and path for agg_s_nom_minmax.csv must be defined
+    in config.yaml. Default file is available at data/agg_s_nom_minmax.csv. The bus names are based on the clustered network and the limits are applied to the sum of line capacities between two buses.
+    must be specified by planning horizon in the csv file.
+
+
+    Parameters
+    ----------
+    n : pypsa.Network
+    config : dict
+
+    Example
+    -------
+    scenario:
+        ll: [clim-CP] - reads sub scenario CP (Copper Plate) and applies limits
+    electricity:
+        agg_s_nom_limits:
+            file: data/agg_s_nom_minmax.csv
+            include_existing: false
+    """
+    agg_s_nom_limits = config["electricity"].get("agg_s_nom_limits")
+    scenario = factor.split("-")[1]
+
+    try:
+        agg_s_nom_minmax = pd.read_csv(
+            snakemake.input.agg_s_nom_minmax, index_col=list(range(3)), header=[0, 1]
+        ).loc[scenario, snakemake.wildcards.planning_horizons]
+    except IOError:
+        logger.exception(
+            "Need to specify the path to a .csv file containing "
+            "aggregate capacity line limits in"
+            "config['electricity']['agg_s_nom_limits']."
+        )
+    logger.info(
+        "Adding custom specified line limits between clustered buses."
+    )
+
+    for (bus0, bus1), limits in agg_s_nom_minmax.iterrows():
+        mask = ((n.lines.bus0 == bus0) & (n.lines.bus1 == bus1)) | \
+               ((n.lines.bus0 == bus1) & (n.lines.bus1 == bus0))
+        n.lines.loc[mask, "s_nom_min"] = limits["min"]
+        n.lines.loc[mask, "s_nom_max"] = limits["max"]
+
+    factor = n.lines.s_nom_min / n.lines.s_nom # compare forced capacity to the default and update num_parallel lines
+    n.lines.num_parallel = factor * n.lines.num_parallel
+
+
 
 
 def add_EQ_constraints(n, o, scaling=1e-1):
@@ -806,6 +865,7 @@ def extra_functionality(n, snapshots):
         add_SAFE_constraints(n, config)
     if "CCL" in opts and n.generators.p_nom_extendable.any():
         add_CCL_constraints(n, config)
+
     reserve = config["electricity"].get("operational_reserve", {})
     if reserve.get("activate"):
         add_operational_reserve_margin(n, snapshots, config)
@@ -820,6 +880,8 @@ def extra_functionality(n, snapshots):
     add_battery_constraints(n)
     add_lossy_bidirectional_link_constraints(n)
 
+    if config["solving"]["options"]["formulation"] =="transport":
+        force_transfer_model_only(n)
 
 
 def solve_network(n, config, solving, **kwargs):
@@ -841,12 +903,12 @@ def solve_network(n, config, solving, **kwargs):
     n.config = config
     n.opts = opts
 
-    if skip_iterations:
+    if skip_iterations or cf_solving.get("formulation", {}) == "transport":
         status, condition = n.optimize(**kwargs)
     else:
-        kwargs["track_iterations"] = (cf_solving.get("track_iterations", False),)
-        kwargs["min_iterations"] = (cf_solving.get("min_iterations", 4),)
-        kwargs["max_iterations"] = (cf_solving.get("max_iterations", 6),)
+        kwargs["track_iterations"] = cf_solving.get("track_iterations", False)
+        kwargs["min_iterations"] = cf_solving.get("min_iterations", 4)
+        kwargs["max_iterations"] = cf_solving.get("max_iterations", 6)
         status, condition = n.optimize.optimize_transmission_expansion_iteratively(
             **kwargs
         )
@@ -871,13 +933,13 @@ if __name__ == "__main__":
         snakemake = mock_snakemake(
             "solve_elec_network_myopic",
             simpl="",
-            clusters="4",
-            ll="c1",
-            opts="Co2L-4H",
+            clusters="10",
+            ll="climSIL-TDP",
+            opts="Ep-1h",
             planning_horizons="2030",
-            discountrate="0.071",
+            discountrate="0.096",
             demand="AB",
-            configfile="config.tutorial.yaml",
+            configfile="config.yaml",
         )
 
     configure_logging(snakemake)
@@ -899,7 +961,9 @@ if __name__ == "__main__":
     ):
         add_existing(n)
 
-    n = prepare_network(n, solve_opts, config=solve_opts)
+
+
+    n = prepare_network(n, opts, solve_opts, config=solve_opts)
 
     n = solve_network(
         n,

@@ -79,7 +79,8 @@ ATLITE_NPROCESSES = config["atlite"].get("nprocesses", 4)
 wildcard_constraints:
     simpl="[a-zA-Z0-9]*|all",
     clusters="[0-9]+(m|flex)?|all|min",
-    ll=r"(v|c|l)([0-9\.]+|opt|all)|all",
+    #ll=r"(v|c|l)([0-9\.]+|opt|all)|all",
+    ll=r"(v|c|l)([0-9\.]+|opt|all|[a-zA-Z0-9\-]+)|all",
     opts=r"[-+a-zA-Z0-9\.]*",
     unc=r"[-+a-zA-Z0-9\.]*",
     sopts=r"[-+a-zA-Z0-9\.\s]*",
@@ -2443,6 +2444,8 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
                     if config["enable"].get("retrieve_cost_data", True) 
                     else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
+            agg_p_nom_minmax=PYPSAEARTH_DIR + config["electricity"]["agg_s_nom_limits"]["file"], 
+            agg_s_nom_minmax=PYPSAEARTH_DIR + config["electricity"]["agg_s_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             network=RESDIR
             + "postnetworks/elec_s{simpl}_{clusters}_ec_l{ll}_{opts}_{planning_horizons}_{discountrate}_{demand}_elec.nc",
