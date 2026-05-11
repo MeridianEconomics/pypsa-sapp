@@ -56,7 +56,7 @@ scenario:
   simpl: [""]
   ll: ["copt"]
   clusters: [10]
-  opts: [Ep-1h] #[Co2L-3h]
+  opts: [CCL-Ep-1h] #[Co2L-3h]
   planning_horizons: [2030, 2035, 2040, 2045, 2050] # investment years for myopic and perfect; or costs year for overnight
   # - 2030
   sopts: 
@@ -227,6 +227,11 @@ electricity:
     hourly_profiles_file: 2030.csv # index = snapshots, columns = station names that match Name in powerplantmatching
     parameter: [p_max_pu, p_min_pu] # options [p_max_pu, p_min_pu]
     scaling: [1, 0.65]
+
+  ramp_limits:
+    coal:
+      ramp_limit_up: 0.5
+      ramp_limit_down: 0.5
 
   conventional_carriers: [nuclear, oil, OCGT, CCGT, coal, lignite, geothermal, biomass]
   renewable_carriers: [solar, onwind, offwind-ac, offwind-dc, hydro, csp]
