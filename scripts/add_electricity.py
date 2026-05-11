@@ -751,7 +751,7 @@ def attach_existing_batteries(n, costs, ppl):
         carrier="battery",
         p_nom=batteries["p_nom"],
         capital_cost=costs.at["battery", "capital_cost"],
-        p_nom_extendable = True
+        p_nom_extendable = True,
         max_hours=max_hours,
         efficiency_store=np.sqrt(costs.at["battery", "efficiency"]),
         efficiency_dispatch=np.sqrt(costs.at["battery", "efficiency"]),

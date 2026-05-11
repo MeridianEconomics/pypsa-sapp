@@ -2436,6 +2436,7 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             foresight=config["foresight"],
             planning_horizons=config["scenario"]["planning_horizons"],
             augmented_line_connection=config["augmented_line_connection"],
+            electricity=config['electricity'],
         input:
             overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             agg_p_nom_minmax=PYPSAEARTH_DIR + config["electricity"]["agg_p_nom_limits"]["file"],
@@ -2445,7 +2446,6 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
                     if config["enable"].get("retrieve_cost_data", True) 
                     else PYPSAEARTH_DIR + "data/" + RDIR + "costs_{planning_horizons}.csv"),
             configs=SDIR + "configs/config.yaml",  # included to trigger copy_config rule
-            agg_p_nom_minmax=PYPSAEARTH_DIR + config["electricity"]["agg_s_nom_limits"]["file"], 
             agg_s_nom_minmax=PYPSAEARTH_DIR + config["electricity"]["agg_s_nom_limits"]["file"],  # ensure the CSV with capacity constraints is copied into the shadow directory (needed on Windows, since shadowed scripts can’t access files outside `input`)
         output:
             network=RESDIR

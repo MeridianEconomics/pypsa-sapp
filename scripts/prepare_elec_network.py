@@ -124,7 +124,7 @@ def add_lifetime_ocgt_ccgt(n, costs):
         gen_i = n.generators.index.str.contains(carrier)
         n.generators.loc[gen_i, "lifetime"] = costs.at[carrier, "lifetime"]
 
-def add_lifetime_ocgt_ccgt(n, costs):
+def add_lifetime_batteries(n, costs):
     """
     Add lifetime for battery storage units.
     """
