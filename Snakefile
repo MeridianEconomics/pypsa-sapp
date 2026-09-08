@@ -524,26 +524,12 @@ rule build_demand_profiles_years:
         "scripts/build_demand_profiles.py"
     
 
-
 HYDRO_PROFILES = {
-    "hydro_capacities": "data/hydro_capacities.csv",
-    "eia_hydro_generation": "data/eia_hydro_annual_generation.csv",
-    "irena_stats": "data/IRENA_Statistics_Extract_2025H2.xlsx",
-    "powerplants": "resources/" + RDIR + "powerplants.csv",
-    "hydrobasins": "data/hydrobasins/hybas_world.shp",
-}
-
-
-def inputs_hydro(w):
-    return HYDRO_PROFILES if w.technology == "hydro" else {}
-
-
-HYDRO_PROFILES = {
-    "hydro_capacities": "data/hydro_capacities.csv",
-    "eia_hydro_generation": "data/eia_hydro_annual_generation.csv",
-    "irena_stats": "data/IRENA_Statistics_Extract_2025H2.xlsx",
-    "powerplants": "resources/" + RDIR + "powerplants.csv",
-    "hydrobasins": "data/hydrobasins/hybas_world.shp",
+    "hydro_capacities": PYPSAEARTH_DIR + "data/hydro_capacities.csv",
+    "eia_hydro_generation": PYPSAEARTH_DIR + "data/eia_hydro_annual_generation.csv",
+    "irena_stats": PYPSAEARTH_DIR + "data/IRENA_Statistics_Extract_2025H2.xlsx",
+    "powerplants": PYPSAEARTH_DIR + "resources/" + RDIR + "powerplants.csv",
+    "hydrobasins": PYPSAEARTH_DIR + "data/hydrobasins/hybas_world.shp",
 }
 
 
@@ -2437,6 +2423,8 @@ if config["foresight"] == "myopic" and not config['enable_sector_coupling']:
             planning_horizons=config["scenario"]["planning_horizons"],
             augmented_line_connection=config["augmented_line_connection"],
             electricity=config['electricity'],
+            lines=config["lines"],
+            costs=config["costs"],
         input:
             overrides=PYPSAEARTH_DIR + "data/override_component_attrs",
             agg_p_nom_minmax=PYPSAEARTH_DIR + config["electricity"]["agg_p_nom_limits"]["file"],
