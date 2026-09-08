@@ -495,6 +495,14 @@ def merge_stations_lines_by_station_id_and_voltage(
     # set substation ids
     set_substations_ids(buses, distance_crs, tol=tol)
 
+    # Prevent cross-border station merging
+    buses["station_id"] = (
+        buses["country"].astype(str)
+        + "_"
+        + buses["station_id"].astype(str)
+    )
+
+
     logger.info("Stage 4b/5: Merge substations with the same id")
 
     # merge buses with same station id and voltage

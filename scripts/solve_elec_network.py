@@ -303,6 +303,83 @@ def add_CCL_constraints(n, config):
         )
 
 
+def apply_single_line_derating(n, name, SIL, stability_limit):
+    # Multiply the SIL with the St Clair curve to get the line limt as a function of distance
+    length = n.lines.loc[name, "length"]# in km
+    
+    if stability_limit == 'SIL':
+        return  SIL / n.lines.loc[name, "s_nom"]
+    elif stability_limit == 'SC':
+        st_clair = np.minimum(3 * SIL, SIL * 53.736 * (length ** -0.65)) # digitised from https://www.researchgate.net/figure/The-St-Clair-curve-as-based-on-the-results-of-14-retrieved-from-15-is-used-to_fig3_318692193
+        return st_clair / n.lines.loc[name, "s_nom"]
+
+   
+from pypsa.geo import haversine_pts
+
+def add_custom_lines(n, b0, b1, limit, costs, lines_config, base_voltage):
+
+    length_factor = lines_config["length_factor"]
+    linetype = lines_config["ac_types"][base_voltage]
+    hvac_cost = costs.at["HVAC overhead", "capital_cost"]
+
+    assert b0 in n.buses.index and b1 in n.buses.index, (b0, b1)
+    length = length_factor * haversine_pts(
+        n.buses.loc[b0, ["x", "y"]].values,
+        n.buses.loc[b1, ["x", "y"]].values,
+    )
+
+    name = b0 + '-' + b1
+    n.add(
+        "Line", name,
+        bus0=b0, bus1=b1,
+        type=linetype,
+        length=length,
+        carrier="AC",
+        s_max_pu=lines_config["s_max_pu"],
+        s_nom_extendable=True,
+        s_nom_min=limit["min"],
+        s_nom_max=limit["max"],
+        capital_cost=length * hvac_cost,
+    )
+
+    n.lines.loc[name, "v_nom"] = base_voltage
+    n.lines.loc[name, "i_nom"] = n.line_types.i_nom[linetype]
+    n.lines.loc[name, "underwater_fraction"] = 0.0
+
+    n.lines.loc[name, "s_nom"] = (
+            np.sqrt(3)
+            * n.line_types.i_nom[n.lines.loc[name, "type"]]
+            * (n.lines.loc[name, "v_nom"] 
+            * n.lines.loc[name, "num_parallel"])
+        )
+
+    stability_limit=None
+    if lines_config["limits"] == "SIL":
+        stability_limit = "SIL"
+    elif lines_config["limits"] == "St Clair":
+        stability_limit = "SC"
+
+    if stability_limit is not None:
+        # required for scaling SIL to single voltage level in simplify_network.py
+        x_per_length = n.line_types.x_per_length[n.lines.loc[name, "type"]]
+        c_per_length = n.line_types.c_per_length[n.lines.loc[name, "type"]]
+        b_per_length = (
+            2
+            * np.pi
+            * lines_config["default_frequency"]
+            * c_per_length
+            * 1e-9
+        )
+
+        SIL = n.lines.loc[name, "v_nom"]**2 / np.sqrt(x_per_length / b_per_length) * n.lines.loc[name, "num_parallel"]
+        stability_derating = apply_single_line_derating(n, name, SIL, stability_limit)
+        # stability_derating = stability_derating
+
+        n.lines.loc[name, "capital_cost"] = n.lines.loc[name, "capital_cost"] / stability_derating
+
+        logger.info(f"Applied additional stability limit to lines according to {stability_limit.replace('SIL','Surge Impedance Loading').replace('SC','St Clair')} method.")
+
+
 def add_line_limit_constraints(n, factor, config):
     """
 
@@ -324,6 +401,7 @@ def add_line_limit_constraints(n, factor, config):
         agg_s_nom_limits:
             file: data/agg_s_nom_minmax.csv
             include_existing: false
+            fix_lines: false
     """
     agg_s_nom_limits = config["electricity"].get("agg_s_nom_limits")
     scenario = factor.split("-")[1]
@@ -332,6 +410,7 @@ def add_line_limit_constraints(n, factor, config):
         agg_s_nom_minmax = pd.read_csv(
             snakemake.input.agg_s_nom_minmax, index_col=list(range(3)), header=[0, 1]
         ).loc[scenario, snakemake.wildcards.planning_horizons]
+        agg_s_nom_minmax = agg_s_nom_minmax.apply(pd.to_numeric, errors="coerce")
     except IOError:
         logger.exception(
             "Need to specify the path to a .csv file containing "
@@ -341,15 +420,47 @@ def add_line_limit_constraints(n, factor, config):
     logger.info(
         "Adding custom specified line limits between clustered buses."
     )
+    lines_added = 0
 
     for (bus0, bus1), limits in agg_s_nom_minmax.iterrows():
         mask = ((n.lines.bus0 == bus0) & (n.lines.bus1 == bus1)) | \
                ((n.lines.bus0 == bus1) & (n.lines.bus1 == bus0))
-        n.lines.loc[mask, "s_nom_min"] = limits["min"]
-        n.lines.loc[mask, "s_nom_max"] = limits["max"]
+        if mask.any():
+            n.lines.loc[mask, "s_nom_min"] = limits["min"]
+            n.lines.loc[mask, "s_nom_max"] = limits["max"]
+        else:
+            add_custom_lines(n, bus0, bus1, limits, costs, snakemake.params.lines, snakemake.params.electricity["base_voltage"])
+            lines_added += 1
+
+    if lines_added > 0:
+        logger.info(
+                "Custom line limits were specified for missing lines"
+                f"Missing lines added: {lines_added}"
+            )
 
     factor = n.lines.s_nom_min / n.lines.s_nom # compare forced capacity to the default and update num_parallel lines
     n.lines.num_parallel = factor * n.lines.num_parallel
+
+    if config["electricity"]["agg_s_nom_limits"]["fix_lines"]:
+        for (bus0, bus1), limits in agg_s_nom_minmax.iterrows():
+            mask = ((n.lines.bus0 == bus0) & (n.lines.bus1 == bus1)) | \
+                ((n.lines.bus0 == bus1) & (n.lines.bus1 == bus0))
+            n.lines.loc[mask, "s_nom"] = limits["min"]
+
+        n.lines.s_nom_extendable = False
+
+    if config["electricity"]["agg_s_nom_limits"]["remove_external_lines"]:
+        valid_pairs = set(agg_s_nom_minmax.index) | {(b, a) for a, b in agg_s_nom_minmax.index}
+
+        # remove any line whose (bus0, bus1) is not a valid pair
+        in_agg = n.lines.apply(lambda l: (l.bus0, l.bus1) in valid_pairs, axis=1)
+        to_remove = n.lines.index[~in_agg]
+        n.mremove("Line", to_remove)
+
+        logger.info(
+                        "Lines not in agg_s_nom_minmax were dropped"
+                        f"Lines dropped: {len(to_remove)}"
+                    )
 
 
 
@@ -411,7 +522,6 @@ def add_EQ_constraints(n, o, scaling=1e-1):
         spillage_variable = n.model["StorageUnit-spill"]
         lhs_spill = (
             (spillage_variable * (-n.snapshot_weightings.stores * scaling))
-            .groupby_sum(sgrouper)
             .groupby(sgrouper.to_xarray())
             .sum()
             .sum("snapshot")
@@ -948,8 +1058,8 @@ if __name__ == "__main__":
             "solve_elec_network_myopic",
             simpl="",
             clusters="10",
-            ll="climSIL-TDP",
-            opts="Ep-1h",
+            ll="clim-SAPPFIXED",
+            opts="CCL-Ep-1h-EQ0.5c",
             planning_horizons="2030",
             discountrate="0.096",
             demand="AB",
@@ -960,6 +1070,11 @@ if __name__ == "__main__":
 
     opts = snakemake.wildcards.opts.split("-")
     solve_opts = snakemake.config["solving"]["options"]
+    costs = load_costs(
+        snakemake.input.costs,
+        snakemake.params.costs,
+        snakemake.params.electricity,
+    )
 
     n = pypsa.Network(snakemake.input.network)
 
@@ -987,6 +1102,12 @@ if __name__ == "__main__":
 
 
     n = prepare_network(n, opts, solve_opts, config=solve_opts)
+
+    mask = (n.links.bus0 == "ZA.Gauteng_AC") & (n.links.bus1 == "MZ._AC")
+    n.mremove("Link", n.links.index[mask])
+
+    mask = (n.links.bus1 == "ZA.Gauteng_AC") & (n.links.bus0 == "MZ._AC")
+    n.mremove("Link", n.links.index[mask])
 
     n = solve_network(
         n,

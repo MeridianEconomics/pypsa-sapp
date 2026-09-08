@@ -200,36 +200,11 @@ def apply_line_derating(n, SIL, stability_limit):
 
 def set_line_s_max_pu(n, s_max_pu, config, ll_factor):
     
-    stability_limit=None
-    if "SIL" in ll_factor:
-        stability_limit = "SIL"
-    elif "SC" in ll_factor:
-        stability_limit = "SC"
-    
     n.lines["s_max_pu"] = s_max_pu
     logger.info(f"N-1 security margin of lines set to {s_max_pu}")
 
-    if stability_limit is not None:
-        # required for scaling SIL to single voltage level in simplify_network.py
-        x_per_length = n.lines["type"].map(n.line_types.x_per_length)
-        c_per_length = n.lines["type"].map(n.line_types.c_per_length)
-        b_per_length = (
-            2
-            * np.pi
-            * config["lines"]["default_frequency"]
-            * c_per_length
-            * 1e-9
-        )
 
-        SIL = n.lines["v_nom"]**2 / np.sqrt(x_per_length / b_per_length) * n.lines.num_parallel
-
-        stability_derating = apply_line_derating(n, SIL, stability_limit)
-        n.lines["s_max_pu"] = n.lines["s_max_pu"] * stability_derating
-        logger.info(f"Applied additional stability limit to lines according to {stability_limit.replace('SIL','Surge Impedance Loading').replace('SC','St Clair')} method.")
-
-
-
-def set_transmission_limit(n, ll_type, factor, costs, lines, links):
+def set_transmission_limit(n, ll_type, factor, costs, lines, links, config):
     links_dc_b = n.links.carrier == "DC" if not n.links.empty else pd.Series()
 
     _lines_s_nom = (
@@ -249,7 +224,7 @@ def set_transmission_limit(n, ll_type, factor, costs, lines, links):
     )
 
     update_transmission_costs(n, costs)
-
+    factor = factor.split("-")[0]
     if factor == "opt" or float(factor) > 1.0:
         n.lines["s_nom_min"] = lines_s_nom
         n.lines["s_nom_extendable"] = True
@@ -275,6 +250,36 @@ def set_transmission_limit(n, ll_type, factor, costs, lines, links):
         )
 
     set_line_nom_max(n, lines, links)
+
+    stability_limit=None
+    if config["lines"]["limits"] == "SIL":
+        stability_limit = "SIL"
+    elif config["lines"]["limits"] == "St Clair":
+        stability_limit = "SC"
+
+    if stability_limit is not None:
+        # required for scaling SIL to single voltage level in simplify_network.py
+        x_per_length = n.lines["type"].map(n.line_types.x_per_length)
+        c_per_length = n.lines["type"].map(n.line_types.c_per_length)
+        b_per_length = (
+            2
+            * np.pi
+            * config["lines"]["default_frequency"]
+            * c_per_length
+            * 1e-9
+        )
+
+        SIL = n.lines["v_nom"]**2 / np.sqrt(x_per_length / b_per_length) * n.lines.num_parallel
+        n.lines['s_nom_th'] = n.lines['s_nom'].copy()
+        stability_derating = apply_line_derating(n, SIL, stability_limit)
+
+        n.lines['s_nom'] = n.lines['s_nom'] * stability_derating
+        n.lines["s_nom_max"] = n.lines["s_nom_max"] * stability_derating
+        n.lines["s_nom_min"] = n.lines["s_nom_min"] * stability_derating
+        n.lines["capital_cost"] = n.lines["capital_cost"] / stability_derating
+
+        logger.info(f"Applied additional stability limit to lines according to {stability_limit.replace('SIL','Surge Impedance Loading').replace('SC','St Clair')} method.")
+
 
     return n
 
@@ -380,7 +385,7 @@ if __name__ == "__main__":
             "prepare_network",
             simpl="",
             clusters="10",
-            ll="clim-CP",
+            ll="clim-CP-SC",
             opts="Ep-1h",
             # configfile="test/config.sector.yaml",
         )
@@ -488,12 +493,18 @@ if __name__ == "__main__":
 
     lines = snakemake.params.lines
     links = snakemake.params.links
-    set_transmission_limit(n, ll_type, factor, costs, lines, links)
+    set_transmission_limit(n, ll_type, factor, costs, lines, links, snakemake.config)
 
     if "ATK" in opts:
         enforce_autarky(n)
     elif "ATKc" in opts:
         enforce_autarky(n, only_crossborder=True)
+
+    mask = (n.links.bus0 == "ZA.Gauteng_AC") & (n.links.bus1 == "MZ._AC")
+    n.mremove("Link", n.links.index[mask])
+
+    mask = (n.links.bus1 == "ZA.Gauteng_AC") & (n.links.bus0 == "MZ._AC")
+    n.mremove("Link", n.links.index[mask])
 
     sanitize_carriers(n, snakemake.config)
     sanitize_locations(n)

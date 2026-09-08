@@ -523,12 +523,67 @@ def rescale_hydro(plants, runoff, normalize_using_yearly, normalization_year):
 
     return runoff
 
+def add_AHA_inflows(inflow, ppls, scenario="normal"):
+
+    aha = pd.read_excel(PYPSAEARTH_DIR + "data/African_Hydropower_Atlas_inflows.xlsx", sheet_name="Results_Energy", index_col=[0])
+
+    MONTHS = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December",]
+    cols = [f"{m}_energy_MWh_{scenario}" for m in MONTHS]
+    aha = aha[cols]
+
+    months = pd.DatetimeIndex(inflow["time"].values).month.to_numpy() - 1
+
+    overwritten, kept = [], []
+    for pid in inflow["plant"].values:
+        if ppls.at[pid, "name"] in aha.index:
+            plant = aha.loc[ppls.at[pid, "name"]]
+        else:
+            kept.append(pid)
+            continue
+
+        inflow.loc[{"plant": pid}] = plant[months]
+        overwritten.append(pid)
+
+    logger.info(
+        f"African Hydropower Atlas ('{scenario}' scenario): "
+        f"overwrote {len(overwritten)} hydro plants, "
+        f"kept atlite inflow for {len(kept)}."
+    )
+    
+    return inflow
+
+
+def add_GRDC_inflows(inflow, ppls, scenario="medium"):
+
+    grdc_folder = PYPSAEARTH_DIR + "data/grdc"
+    grdc_plants = [f.name.replace('.csv', '') for f in os.scandir(grdc_folder) if f.name.endswith('.csv')]
+
+    overwritten = []
+    for plant_name in grdc_plants:
+        if plant_name in ppls['name'].to_list():
+            pid = ppls.query("name == @plant_name").index
+        else:
+            continue
+
+        grdc_data = pd.read_csv(grdc_folder + "/" + plant_name + ".csv", index_col=[0]).T
+        plant = grdc_data.loc[scenario]
+
+        inflow.loc[{"plant": pid}] = plant.values
+        overwritten.append(pid)
+
+    logger.info(
+        f"GRDC ('{scenario}' scenario): "
+        f"overwrote {len(overwritten)} hydro plants, "
+    )
+    
+    return inflow
+
 
 if __name__ == "__main__":
     if "snakemake" not in globals():
         from _helpers import mock_snakemake
 
-        snakemake = mock_snakemake("build_renewable_profiles", technology="onwind")
+        snakemake = mock_snakemake("build_renewable_profiles", technology="hydro")
     configure_logging(snakemake)
 
     pgb.streams.wrap_stderr()
@@ -690,6 +745,14 @@ if __name__ == "__main__":
                     ),
                 )
                 inflow = xr.concat([inflow, notin_data], dim="plant")
+
+            if config['aha_data']['use_aha_inflows']:
+                aha_scenario = config['aha_data']['scenario']
+                inflow = add_AHA_inflows(inflow, ppls, aha_scenario)
+
+            if config['grdc_data']['use_grdc_inflows']:
+                grdc_scenario = config['grdc_data']['scenario']
+                inflow = add_GRDC_inflows(inflow, ppls, grdc_scenario)
 
             inflow.rename("inflow").to_netcdf(snakemake.output.profile)
     else:
